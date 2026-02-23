@@ -1,0 +1,20 @@
+[package]
+name = "nomnom"
+description = "YT-DLP GUI Wrapper, but it eats URLs and spits out videos. simple."
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+dioxus = { version = "0.6", features = ["desktop"] }
+dioxus-desktop = "0.6"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rfd = "0.15"                    # native file dialog
+dirs = "6"                      # platform dirs (Downloads, etc.)
+chrono = "0.4"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
