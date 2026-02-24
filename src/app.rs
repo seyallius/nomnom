@@ -21,15 +21,15 @@
 //! └── output_log     → reads log_lines
 //! ```
 
-use dioxus::prelude::*;
-
 use crate::{
     components::{
         flag_panel::FlagPanel, output_log::OutputLog, preset_panel::PresetPanel,
         terminal_panel::TerminalPanel, url_bar::UrlBar,
     },
-    core::{flags::Flag, presets::Preset},
+    core::{flags::Flag, presets::Preset, runner::ChildHandle},
 };
+use dioxus::prelude::*;
+use std::sync::{Arc, Mutex};
 
 // -------------------------------------------- Public API --------------------------------------------
 
@@ -95,6 +95,11 @@ pub fn App() -> Element {
     // Flag indicating whether a download is currently in progress.
     // Used to disable the download button and show loading state.
     let is_running = use_signal(|| false);
+
+    // Shared handle to the active child process.
+    // Stored in a Signal so it's reactive and accessible from stop button.
+    // Arc<Mutex<...>> because it must cross async task + onclick boundaries.
+    let child_handle: Signal<ChildHandle> = use_signal(|| Arc::new(Mutex::new(None)));
 
     // Memoized command preview string.
     // Recomputes automatically when `url`, `active_flags`, or `output_dir` change.
@@ -185,11 +190,13 @@ pub fn App() -> Element {
                         active_flags,
                         log_lines,
                         is_running,
+                        child_handle,
                     }
 
                     TerminalPanel {
                         log_lines,
                         is_running,
+                        child_handle,
                     }
 
                     OutputLog { log_lines }

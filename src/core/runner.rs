@@ -16,14 +16,33 @@
 //! All errors are captured and written to the log as user-friendly messages.
 //! The application never panics from subprocess failures.
 
+use crate::core::flags::Flag;
 use dioxus::prelude::*;
-use std::process::Stdio;
+use std::{
+    process::Stdio,
+    sync::{Arc, Mutex},
+};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
-    process::Command,
+    process::{Child, Command},
 };
 
-use crate::core::flags::Flag;
+// -------------------------------------------- Types --------------------------------------------
+
+/// Thread-safe slot holding the active child process, if any.
+///
+/// Shared between the async runner and the UI stop button.
+/// Wrapped in `Arc<Mutex<...>>` so it can be cloned into both the
+/// spawned async task and the button's `onclick` handler.
+///
+/// # Usage
+///
+/// ```rust,ignore
+/// let handle: ChildHandle = Arc::new(Mutex::new(None));
+/// // pass into run_download — it stores the child inside
+/// // pass a clone into the stop button — it calls cancel_download
+/// ```
+pub type ChildHandle = Arc<Mutex<Option<Child>>>;
 
 // -------------------------------------------- Public API --------------------------------------------
 
@@ -72,52 +91,64 @@ pub fn build_command_string(url: &str, flags: &[Flag], output_dir: &str) -> Stri
     format!("yt-dlp {} {} \"{}\"", flags_str, output_template, url)
 }
 
-/// Spawns yt-dlp as a subprocess and streams output to the log.
+/// Kills the active child process stored in the handle.
 ///
-/// This is the main download function that:
-/// 1. Constructs the argument list from flags and URL
-/// 2. Spawns yt-dlp with piped stdout/stderr
-/// 3. Streams output lines to `log_lines` in real-time
-/// 4. Updates `is_running` state on completion
+/// This is the cancel/stop function called by the UI stop button.
+/// It locks the handle, takes the child out, and sends SIGKILL.
 ///
 /// # Arguments
 ///
-/// * `url` - The video/playlist URL to download.
-/// * `flags` - Active flags to pass to yt-dlp.
-/// * `output_dir` - Directory for output files.
-/// * `log_lines` - Signal to receive output lines (will be cleared first).
-/// * `is_running` - Signal to track running state.
+/// * handle - The shared child handle to kill.
+/// * log_lines - Signal to write a cancellation log message.
+/// * is_running - Signal to reset running state.
 ///
-/// # Async Behavior
+/// # Behavior
 ///
-/// This function runs asynchronously and updates signals as output arrives.
-/// The UI will re-render automatically as `log_lines` is modified.
+/// - If no child is running, does nothing silently.
+/// - On kill success, logs “⛔ Download canceled by user.”
+/// - On kill error, logs the error message.
+pub fn cancel_download(
+    handle: &ChildHandle,
+    mut log_lines: Signal<Vec<String>>,
+    mut is_running: Signal<bool>,
+) {
+    let mut lock = handle.lock().unwrap();
+    if let Some(child) = lock.as_mut() {
+        match child.start_kill() {
+            Ok(_) => {
+                log_lines
+                    .write()
+                    .push("⛔ Download cancelled by user.".to_string());
+            }
+            Err(e) => {
+                log_lines
+                    .write()
+                    .push(format!("✗ Failed to kill process: {e}"));
+            }
+        }
+        // Drop the child out of the slot
+        *lock = None;
+    }
+    is_running.set(false);
+}
+
+/// Spawns yt-dlp as a subprocess and streams output to the log.
 ///
-/// # Error Handling
+/// # Arguments
 ///
-/// - If yt-dlp fails to spawn, an error message is pushed to `log_lines`
-/// - If yt-dlp exits non-zero, the exit status is logged
-/// - stderr lines are prefixed with `⚠` for visibility
-///
-/// # Example
-///
-/// ```rust,ignore
-/// spawn(async move {
-///     run_download(
-///         url.clone(),
-///         flags.clone(),
-///         output_dir.clone(),
-///         log_lines,
-///         is_running,
-///     ).await;
-/// });
-/// ```
+/// * url - The video/playlist URL to download.
+/// * flags - Active flags to pass to yt-dlp.
+/// * output_dir - Directory for output files.
+/// * log_lines - Signal to receive output lines (will be cleared first).
+/// * is_running - Signal to track running state.
+/// * child_handle - Shared slot to store the child process for cancellation.
 pub async fn run_download(
     url: String,
     flags: Vec<Flag>,
     output_dir: String,
     mut log_lines: Signal<Vec<String>>,
     mut is_running: Signal<bool>,
+    child_handle: ChildHandle,
 ) {
     is_running.set(true);
     log_lines.write().clear();
@@ -127,7 +158,6 @@ pub async fn run_download(
 
     // Build args vec
     let mut args: Vec<String> = vec!["-o".to_string(), output_template];
-
     for flag in &flags {
         // Each flag may have multiple tokens e.g. "--audio-format mp3"
         for token in flag.flag.split_whitespace() {
@@ -140,9 +170,9 @@ pub async fn run_download(
     let result = Command::new(&shell)
         .arg("-i")
         .arg("-c")
-        .arg("yt-dlp \"$@\"")   // $@ expands positional args safely
-        .arg("--")               // marks end of shell options, $0 placeholder
-        .args(&args)             // each arg passed as its own element, no parsing
+        .arg("yt-dlp \"$@\"") // $@ expands positional args safely
+        .arg("--") // marks end of shell options, $0 placeholder
+        .args(&args) // each arg passed as its own element, no parsing
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn();
@@ -158,34 +188,61 @@ pub async fn run_download(
             is_running.set(false);
         }
         Ok(mut child) => {
-            // Stream stdout
-            if let Some(stdout) = child.stdout.take() {
+            // ── Stream stdout ──────────────────────────────────────────────
+            // We must take stdout/stderr BEFORE storing the child,
+            // because storing moves it into the Mutex.
+            let stdout = child.stdout.take();
+            let stderr = child.stderr.take();
+
+            // Store child in the shared handle so the stop button can kill it
+            {
+                let mut lock = child_handle.lock().unwrap();
+                *lock = Some(child);
+            }
+
+            // Stream stdout lines
+            if let Some(stdout) = stdout {
                 let mut reader = BufReader::new(stdout).lines();
                 while let Ok(Some(line)) = reader.next_line().await {
                     log_lines.write().push(line);
                 }
             }
-            // Collect stderr
-            if let Some(stderr) = child.stderr.take() {
+
+            // Stream stderr lines
+            if let Some(stderr) = stderr {
                 let mut reader = BufReader::new(stderr).lines();
                 while let Ok(Some(line)) = reader.next_line().await {
                     log_lines.write().push(format!("⚠ {line}"));
                 }
             }
 
-            match child.wait().await {
-                Ok(status) if status.success() => {
-                    log_lines.write().push("✔ Download complete!".to_string());
-                }
-                Ok(status) => {
-                    log_lines
-                        .write()
-                        .push(format!("✗ yt-dlp exited with: {status}"));
-                }
-                Err(e) => {
-                    log_lines.write().push(format!("✗ Wait error: {e}"));
+            // Wait for process and report exit status
+            // Take child back out of the handle to call .wait()
+            let child_opt = {
+                let mut lock = child_handle.lock().unwrap();
+                lock.take()
+            };
+
+            if let Some(mut child) = child_opt {
+                match child.wait().await {
+                    Ok(status) if status.success() => {
+                        log_lines.write().push("✔ Download complete!".to_string());
+                    }
+                    Ok(status) => {
+                        // Check if we were canceled (is_running already false)
+                        // to avoid showing a confusing exit code after user cancel
+                        if *is_running.read() {
+                            log_lines
+                                .write()
+                                .push(format!("✗ yt-dlp exited with: {status}"));
+                        }
+                    }
+                    Err(e) => {
+                        log_lines.write().push(format!("✗ Wait error: {e}"));
+                    }
                 }
             }
+            // If child_opt is None, user cancelled — message already logged by cancel_download
 
             is_running.set(false);
         }
@@ -199,50 +256,27 @@ pub async fn run_download(
 ///
 /// # Arguments
 ///
-/// * `raw` - The raw command string to execute (e.g., `"yt-dlp -f best URL"`).
-/// * `log_lines` - Signal to receive output lines.
-/// * `is_running` - Signal to track running state.
-///
-/// # Parsing
-///
-/// The command is split on whitespace. The first token is the command,
-/// remaining tokens are arguments.
-///
-/// # Security Note
-///
-/// This function runs arbitrary commands on the user's system.
-/// It is intended for advanced users who understand the risks.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// spawn(async move {
-///     run_raw_command(
-///         "yt-dlp --version".to_string(),
-///         log_lines,
-///         is_running,
-///     ).await;
-/// });
-/// ```
+/// * raw - The raw command string to execute.
+/// * log_lines - Signal to receive output lines.
+/// * is_running - Signal to track running state.
+/// * child_handle - Shared slot to store the child process for cancellation.
 pub async fn run_raw_command(
     raw: String,
     mut log_lines: Signal<Vec<String>>,
     mut is_running: Signal<bool>,
+    child_handle: ChildHandle,
 ) {
     is_running.set(true);
     log_lines.write().push(format!("$ {raw}"));
 
-    let tokens: Vec<&str> = raw.split_whitespace().collect();
-    if tokens.is_empty() {
+    if raw.trim().is_empty() {
         is_running.set(false);
         return;
     }
 
-    let (cmd, args) = tokens.split_first().unwrap();
-
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
     let result = Command::new(&shell)
-        .args(["-i", "-c", &cmd])
+        .args(["-i", "-c", &raw])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn();
@@ -253,19 +287,36 @@ pub async fn run_raw_command(
             is_running.set(false);
         }
         Ok(mut child) => {
-            if let Some(stdout) = child.stdout.take() {
+            let stdout = child.stdout.take();
+            let stderr = child.stderr.take();
+
+            {
+                let mut lock = child_handle.lock().unwrap();
+                *lock = Some(child);
+            }
+
+            if let Some(stdout) = stdout {
                 let mut reader = BufReader::new(stdout).lines();
                 while let Ok(Some(line)) = reader.next_line().await {
                     log_lines.write().push(line);
                 }
             }
-            if let Some(stderr) = child.stderr.take() {
+            if let Some(stderr) = stderr {
                 let mut reader = BufReader::new(stderr).lines();
                 while let Ok(Some(line)) = reader.next_line().await {
                     log_lines.write().push(format!("⚠ {line}"));
                 }
             }
-            let _ = child.wait().await;
+
+            let child_opt = {
+                let mut lock = child_handle.lock().unwrap();
+                lock.take()
+            };
+
+            if let Some(mut child) = child_opt {
+                let _ = child.wait().await;
+            }
+
             is_running.set(false);
         }
     }

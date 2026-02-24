@@ -15,9 +15,8 @@
 //! - Pressing Enter or clicking "Run" executes the command
 //! - Output streams to the shared log panel
 
-use crate::core::runner;
+use crate::core::{runner, runner::ChildHandle};
 use dioxus::prelude::*;
-
 // -------------------------------------------- Types --------------------------------------------
 
 /// Props for the [`TerminalPanel`] component.
@@ -27,6 +26,8 @@ pub struct TerminalPanelProps {
     pub log_lines: Signal<Vec<String>>,
     /// Signal tracking whether a command is running.
     pub is_running: Signal<bool>,
+    /// Shared child process handle for stop support.
+    pub child_handle: Signal<ChildHandle>,
 }
 
 // -------------------------------------------- Public API --------------------------------------------
@@ -62,15 +63,22 @@ pub fn TerminalPanel(props: TerminalPanelProps) -> Element {
     let mut raw_input = use_signal(|| String::from("yt-dlp "));
     let log_lines = props.log_lines;
     let is_running = props.is_running;
+    let child_handle = props.child_handle;
 
     let on_run = move |_| {
         let cmd = raw_input.read().clone();
         let log = log_lines;
         let running = is_running;
+        let handle = child_handle.read().clone();
 
         spawn(async move {
-            runner::run_raw_command(cmd, log, running).await;
+            runner::run_raw_command(cmd, log, running, handle).await;
         });
+    };
+
+    let on_stop = move |_| {
+        let handle = child_handle.read().clone();
+        runner::cancel_download(&handle, log_lines, is_running);
     };
 
     rsx! {
@@ -113,26 +121,45 @@ pub fn TerminalPanel(props: TerminalPanelProps) -> Element {
                             let cmd = raw_input.read().clone();
                             let log = log_lines;
                             let running = is_running;
+                            let handle = child_handle.read().clone();
+
                             spawn(async move {
-                                runner::run_raw_command(cmd, log, running).await;
+                                runner::run_raw_command(cmd, log, running, handle).await;
                             });
                         }
                     },
                 }
 
-                button {
-                    style: "
-                        padding: 6px 14px;
-                        background: #2a2a4a;
-                        color: #e0e0e0;
-                        border: 1px solid #3a3a6a;
-                        border-radius: 4px;
-                        cursor: pointer;
-                        font-size: 12px;
-                    ",
-                    disabled: *is_running.read(),
-                    onclick: on_run,
-                    "Run"
+                // Run or Stop depending on state
+                if *is_running.read() {
+                    button {
+                        style: "
+                            padding: 6px 14px;
+                            background: #ff4444;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-size: 12px;
+                            font-weight: bold;
+                        ",
+                        onclick: on_stop,
+                        "⏹ Stop"
+                    }
+                } else {
+                    button {
+                        style: "
+                            padding: 6px 14px;
+                            background: #2a2a4a;
+                            color: #e0e0e0;
+                            border: 1px solid #3a3a6a;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-size: 12px;
+                        ",
+                        onclick: on_run,
+                        "Run"
+                    }
                 }
             }
         }

@@ -16,10 +16,8 @@
 //! └─────────────────────────────────────────────────────────────┘
 //! ```
 
-use crate::core::flags::Flag;
-use crate::core::runner;
+use crate::core::{flags::Flag, runner, runner::ChildHandle};
 use dioxus::prelude::*;
-
 // -------------------------------------------- Types --------------------------------------------
 
 /// Props for the [`UrlBar`] component.
@@ -37,6 +35,8 @@ pub struct UrlBarProps {
     pub log_lines: Signal<Vec<String>>,
     /// Signal tracking whether a download is in progress.
     pub is_running: Signal<bool>,
+    /// Shared child process handle — used to kill the process on stop.
+    pub child_handle: Signal<ChildHandle>,
 }
 
 // -------------------------------------------- Public API --------------------------------------------
@@ -92,6 +92,7 @@ pub fn UrlBar(props: UrlBarProps) -> Element {
     let active_flags = props.active_flags;
     let log_lines = props.log_lines;
     let is_running = props.is_running;
+    let child_handle = props.child_handle;
 
     // Handles folder picker button click.
     // Opens a native OS folder dialog and updates `output_dir` on selection.
@@ -114,6 +115,7 @@ pub fn UrlBar(props: UrlBarProps) -> Element {
         let url_val = url.read().clone();
         let flags = active_flags.read().clone();
         let dir = output_dir.read().clone();
+        let handle = child_handle.read().clone();  // clone the Arc, cheap
 
         if url_val.trim().is_empty() {
             log_lines
@@ -127,8 +129,14 @@ pub fn UrlBar(props: UrlBarProps) -> Element {
         let running = is_running;
 
         spawn(async move {
-            runner::run_download(url_val, flags, dir, log, running).await;
+            runner::run_download(url_val, flags, dir, log, running, handle).await;
         });
+    };
+
+    // Stop button: kills the child process via the shared handle
+    let on_stop = move |_| {
+        let handle = child_handle.read().clone();
+        runner::cancel_download(&handle, log_lines, is_running);
     };
 
     rsx! {
@@ -157,17 +165,32 @@ pub fn UrlBar(props: UrlBarProps) -> Element {
                 }
 
                 button {
-                    style: button_style(false),
+                    style: button_style(ButtonKind::Folder, false),
                     onclick: on_pick_folder,
                     "📁 Folder"
                 }
 
-                button {
-                    style: button_style(*is_running.read()),
-                    disabled: *is_running.read(),
-                    onclick: on_download,
-                    if *is_running.read() { "⏳ Downloading…" } else { "▶ Download" }
+                // ── Download OR Stop button (mutually exclusive) ──────────
+                if *is_running.read() {
+                    button {
+                        style: button_style(ButtonKind::Stop, false),
+                        onclick: on_stop,
+                        "⏹ Stop"
+                    }
+                } else {
+                    button {
+                        style: button_style(ButtonKind::Download, false),
+                        onclick: on_download,
+                        "▶ Download"
+                    }
                 }
+
+                // button {
+                //     style: button_style(*is_running.read()),
+                //     disabled: *is_running.read(),
+                //     onclick: on_download,
+                //     if *is_running.read() { "⏳ Downloading…" } else { "▶ Download" }
+                // }
             }
 
             // ── Output folder display ─────────────────────────
@@ -202,28 +225,17 @@ pub fn UrlBar(props: UrlBarProps) -> Element {
 
 // -------------------------------------------- Internal Helpers --------------------------------------------
 
-/// Returns inline CSS for a button based on disabled state.
-///
-/// # Arguments
-///
-/// * `disabled` - Whether the button should be disabled.
-///
-/// # Returns
-///
-/// A static CSS string for the button style.
-fn button_style(disabled: bool) -> &'static str {
-    if disabled {
-        "
-            padding: 10px 18px;
-            background: #333;
-            color: #666;
-            border: none;
-            border-radius: 6px;
-            cursor: not-allowed;
-            font-size: 13px;
-        "
-    } else {
-        "
+/// Variants for the button style function.
+enum ButtonKind {
+    Download,
+    Stop,
+    Folder,
+}
+
+/// Returns inline CSS for a button based on its kind.
+fn button_style(kind: ButtonKind, _disabled: bool) -> &'static str {
+    match kind {
+        ButtonKind::Download => "
             padding: 10px 18px;
             background: #6c63ff;
             color: white;
@@ -231,6 +243,26 @@ fn button_style(disabled: bool) -> &'static str {
             border-radius: 6px;
             cursor: pointer;
             font-size: 13px;
-        "
+            font-weight: bold;
+        ",
+        ButtonKind::Stop => "
+            padding: 10px 18px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+        ",
+        ButtonKind::Folder => "
+            padding: 10px 18px;
+            background: #2a2a4a;
+            color: #e0e0e0;
+            border: 1px solid #3a3a6a;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        ",
     }
 }
