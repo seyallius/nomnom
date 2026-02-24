@@ -1,35 +1,111 @@
-//! flags.rs - All yt-dlp flag definitions and helpers
+//! flags.rs - Complete yt-dlp flag definitions and categorization.
+//!
+//! This module provides:
+//! - The [`Flag`] struct representing a single yt-dlp CLI flag
+//! - The [`FlagCategory`] enum for logical grouping in the UI
+//! - A registry of all available flags via [`all_flags`]
+//!
+//! # Design Philosophy
+//!
+//! Flags are defined as static `&'static str` to avoid allocations.
+//! Each flag carries metadata (label, description, category) to make
+//! the UI self-documenting.
+//!
+//! # Adding New Flags
+//!
+//! To add a new flag, simply append to the [`all_flags`] function:
+//!
+//! ```rust,ignore
+//! Flag {
+//!     flag: "--your-new-flag",
+//!     label: "Human Label",
+//!     description: "What this flag does",
+//!     category: FlagCategory::Misc,
+//! },
+//! ```
 
 use serde::{Deserialize, Serialize};
 
-// -------------------------------------------- Public Types --------------------------------------------
+// -------------------------------------------- Types --------------------------------------------
 
-/// A single yt-dlp flag with metadata
+/// A single yt-dlp CLI flag with associated metadata.
+///
+/// This struct captures everything needed to display and execute
+/// a yt-dlp flag in the GUI.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// Flag {
+///     flag: "--yes-playlist",
+///     label: "Yes Playlist",
+///     description: "Download entire playlist if URL points to one",
+///     category: FlagCategory::Playlist,
+/// }
+/// ```
+///
+/// # Fields
+///
+/// - `flag` - The exact CLI string passed to yt-dlp (e.g., `"--yes-playlist"`)
+/// - `label` - Short human-readable text shown on the toggle button
+/// - `description` - Longer explanation shown as a tooltip
+/// - `category` - Logical grouping for UI organization
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Flag {
-    /// CLI flag string e.g. "--yes-playlist"
+    /// CLI flag string as passed to yt-dlp, e.g. `"--yes-playlist"`.
     pub flag: &'static str,
-    /// Human-readable label shown in UI
+    /// Human-readable label displayed on the toggle button.
     pub label: &'static str,
-    /// Tooltip / description
+    /// Detailed description shown as a tooltip on hover.
     pub description: &'static str,
-    /// Category for grouping
+    /// Category used for visual grouping in the flag panel.
     pub category: FlagCategory,
 }
 
-/// Logical grouping of flags shown in the sidebar
+/// Logical category for grouping flags in the sidebar UI.
+///
+/// Categories are displayed in a defined order with emoji prefixes
+/// to make navigation intuitive.
+///
+/// # Display Order
+///
+/// 1. Playlist
+/// 2. Metadata
+/// 3. Format
+/// 4. Subtitles
+/// 5. Audio
+/// 6. Network
+/// 7. Misc
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum FlagCategory {
+    /// Flags controlling playlist download behavior.
     Playlist,
+    /// Flags for embedding or writing metadata.
     Metadata,
+    /// Flags controlling output container format.
     Format,
+    /// Flags for subtitle download and embedding.
     Subtitles,
+    /// Flags for audio extraction and format.
     Audio,
+    /// Flags for proxy, SSL, and geo-restriction handling.
     Network,
+    /// Miscellaneous flags that don't fit other categories.
     Misc,
 }
 
 impl FlagCategory {
+    /// Returns the display label with emoji prefix.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// assert_eq!(FlagCategory::Playlist.label(), "📋 Playlist");
+    /// ```
+    ///
+    /// # Returns
+    ///
+    /// A static string suitable for UI display.
     pub fn label(&self) -> &'static str {
         match self {
             FlagCategory::Playlist => "📋 Playlist",
@@ -43,9 +119,32 @@ impl FlagCategory {
     }
 }
 
-// -------------------------------------------- Public Functions --------------------------------------------
+// -------------------------------------------- Public API --------------------------------------------
 
-/// All available flags the user can toggle
+/// Returns all available yt-dlp flags known to the application.
+///
+/// This function serves as the single source of truth for flag definitions.
+/// The UI iterates over this list to render toggle buttons.
+///
+/// # Organization
+///
+/// Flags are organized by category within the function body for readability.
+/// The order within each category determines the display order in the UI.
+///
+/// # Returns
+///
+/// A `Vec<Flag>` containing all defined flags. This is cheap to call
+/// as the data is embedded in the binary.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let flags = all_flags();
+/// let playlist_flags: Vec<_> = flags
+///     .iter()
+///     .filter(|f| f.category == FlagCategory::Playlist)
+///     .collect();
+/// ```
 pub fn all_flags() -> Vec<Flag> {
     vec![
         // ── Playlist ─────────────────────────────────────

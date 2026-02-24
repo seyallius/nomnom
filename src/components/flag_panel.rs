@@ -1,16 +1,68 @@
-//! flag_panel.rs - Toggleable flag buttons grouped by category
+//! flag_panel.rs - Toggleable flag buttons grouped by category.
+//!
+//! This component renders a grid of toggle buttons for each yt-dlp flag,
+//! organized by category. Users can click buttons to enable/disable flags.
+//!
+//! # Visual Layout
+//!
+//! ```text
+//! 🚩 FLAGS
+//! ────────────────────
+//! 📋 Playlist
+//! ┌────────┐ ┌────────┐
+//! │ Yes PL │ │ No PL  │ ...
+//! └────────┘ └────────┘
+//!
+//! 🏷️ Metadata
+//! ┌────────┐ ┌────────┐
+//! │ Add MD │ │ Thumb  │ ...
+//! └────────┘ └────────┘
+//! ```
 
+/// - Active flags show purple background (`#6c63ff`)
+/// - Inactive flags show dark background (`#1a1a2e`)
+/// - Click toggles the flag in `active_flags`
 use crate::core::flags::{all_flags, Flag, FlagCategory};
 use dioxus::prelude::*;
 
-// -------------------------------------------- Public Functions --------------------------------------------
 
+// -------------------------------------------- Types --------------------------------------------
+
+/// Props for the [`FlagPanel`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct FlagPanelProps {
+    /// Signal holding the currently active flags.
+    /// The panel reads this to show active state and writes to it on click.
     pub active_flags: Signal<Vec<Flag>>,
 }
 
-/// Grid of toggle buttons for each yt-dlp flag, grouped by category
+// -------------------------------------------- Public API --------------------------------------------
+
+/// Renders the flag selection panel with categorized toggle buttons.
+///
+/// This component displays all available flags organized by category.
+/// Each flag is a clickable button that toggles its presence in `active_flags`.
+///
+/// # Arguments
+///
+/// * `props` - Contains `active_flags` signal for reading/writing selections.
+///
+/// # Styling
+///
+/// - Categories are displayed with emoji headers and borders
+/// - Active flags have purple background
+/// - Inactive flags have dark background
+/// - Each button has a tooltip with the flag description
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let active_flags = use_signal(Vec::<Flag>::new);
+///
+/// rsx! {
+///     FlagPanel { active_flags }
+/// }
+/// ```
 #[component]
 pub fn FlagPanel(props: FlagPanelProps) -> Element {
     let mut active_flags = props.active_flags;
@@ -102,8 +154,17 @@ pub fn FlagPanel(props: FlagPanelProps) -> Element {
     }
 }
 
-// -------------------------------------------- Private Helper Functions --------------------------------------------
+// -------------------------------------------- Internal Helpers --------------------------------------------
 
+/// Returns inline CSS for a flag toggle button based on active state.
+///
+/// # Arguments
+///
+/// * `active` - Whether the flag is currently enabled.
+///
+/// # Returns
+///
+/// A static CSS string for the button style.
 fn flag_btn_style(active: bool) -> &'static str {
     if active {
         "

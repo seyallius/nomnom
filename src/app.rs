@@ -1,29 +1,86 @@
-//! app.rs - Root application component and global state
+//! app.rs - Root application component and global state management.
+//!
+//! This module defines the top-level [`App`] component that:
+//! - Owns all shared reactive state via Dioxus [`Signal`]s
+//! - Orchestrates the layout (sidebar + main content area)
+//! - Wires child components together through props
+//!
+//! # Architecture
+//!
+//! All application state lives here and flows down to child components.
+//! Child components read/write state through props, never global context.
+//!
+//! # Data Flow
+//!
+//! ```text
+//! App (owns all Signals)
+//! ├── preset_panel   → reads/writes active_preset, active_flags
+//! ├── flag_panel     → reads/writes active_flags
+//! ├── url_bar        → reads/writes url, output_dir, log_lines, is_running
+//! ├── terminal_panel → reads/writes log_lines, is_running
+//! └── output_log     → reads log_lines
+//! ```
 
 use dioxus::prelude::*;
 
-use crate::components::{
-    flag_panel::FlagPanel, output_log::OutputLog, preset_panel::PresetPanel,
-    terminal_panel::TerminalPanel, url_bar::UrlBar,
+use crate::{
+    components::{
+        flag_panel::FlagPanel, output_log::OutputLog, preset_panel::PresetPanel,
+        terminal_panel::TerminalPanel, url_bar::UrlBar,
+    },
+    core::{flags::Flag, presets::Preset},
 };
-use crate::core::{flags::Flag, presets::Preset};
 
-// -------------------------------------------- Public Functions --------------------------------------------
+// -------------------------------------------- Public API --------------------------------------------
 
-/// Root app component holding all shared state
+/// Root application component holding all shared reactive state.
+///
+/// This is the top-level component that:
+/// 1. Initializes all application state with sensible defaults
+/// 2. Computes derived state (like the command preview)
+/// 3. Renders the full application layout
+///
+/// # State Initialization
+///
+/// | State           | Default Value                |
+/// |-------          |----------------------------- |
+/// | `url`           | Empty string                 |
+/// | `active_flags`  | Empty (populated by preset)  |
+/// | `active_preset` | First preset ("Best Video")  |
+/// | `output_dir`    | OS download directory or `.` |
+/// | `log_lines`     | Empty vec                    |
+/// | `is_running`    | `false`                      |
+///
+/// # Layout Structure
+///
+/// ```text
+/// ┌────────────────────────────────────────────┐
+/// │ Header: "📥 nomnom... gib me URLs!"         │
+/// ├──────────────┬─────────────────────────────┤
+/// │ PresetPanel  │ UrlBar                      │
+/// │ FlagPanel    │ TerminalPanel               │
+/// │ (sidebar)    │ OutputLog                   │
+/// └──────────────┴─────────────────────────────┘
+/// ```
 #[component]
 pub fn App() -> Element {
-    // -- URL the user wants to download
+    // ── Initialize all reactive state ─────────────────────────────────────
+
+    // The URL the user wants to download.
+    // Updated by [`UrlBar`] and read by the command builder.
     let url = use_signal::<String>(String::new);
 
-    // -- Active flags selected by the user
+    // Currently active flags selected by the user.
+    // Can be populated by selecting a preset or toggling individual flags.
     let active_flags: Signal<Vec<Flag>> = use_signal(Vec::new);
 
-    // -- Currently active preset (None = custom)
+    // The currently active preset.
+    // `None` indicates "Custom" mode where the user picks flags manually.
     let active_preset: Signal<Option<Preset>> =
         use_signal(|| Some(crate::core::presets::default_preset()));
 
-    // -- Output folder chosen by the user
+    // Output folder where downloads will be saved.
+    // Defaults to the OS download directory, falling back to current directory.
     let output_dir = use_signal(|| {
         dirs::download_dir()
             .unwrap_or_else(|| std::path::PathBuf::from("."))
@@ -31,13 +88,16 @@ pub fn App() -> Element {
             .to_string()
     });
 
-    // -- Log lines from yt-dlp stdout/stderr
+    // Log lines captured from yt-dlp stdout/stderr.
+    // Displayed in real-time by [`OutputLog`].
     let log_lines: Signal<Vec<String>> = use_signal(Vec::new);
 
-    // -- Is a download currently running?
+    // Flag indicating whether a download is currently in progress.
+    // Used to disable the download button and show loading state.
     let is_running = use_signal(|| false);
 
-    // -- Built command preview
+    // Memoized command preview string.
+    // Recomputes automatically when `url`, `active_flags`, or `output_dir` change.
     let built_command = use_memo(move || {
         crate::core::runner::build_command_string(
             &url.read(),
@@ -45,6 +105,8 @@ pub fn App() -> Element {
             &output_dir.read(),
         )
     });
+
+    // ── Render the application layout ─────────────────────────────────────
 
     rsx! {
         div {

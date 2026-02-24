@@ -1,15 +1,62 @@
-//! output_log.rs - Scrollable terminal-style log output panel
+//! output_log.rs - Scrollable terminal-style log output panel.
+//!
+//! This component displays the streaming output from yt-dlp in a
+//! scrollable, color-coded terminal-style panel.
+//!
+//! # Color Coding
+//!
+//! | Prefix/Content | Color | Meaning |
+//! |----------------|-------|---------|
+//! | `✔` | Green | Success |
+//! | `✗` or `⚠` | Red | Error/Warning |
+//! | `▶` or `$` | Purple | Command start |
+//! | `[download]` | Cyan | Download progress |
+//! | `[info]` | Orange | Information |
+//! | Other | Gray | General output |
 
 use dioxus::prelude::*;
 
-// -------------------------------------------- Public Functions --------------------------------------------
+// -------------------------------------------- Types --------------------------------------------
 
+/// Props for the [`OutputLog`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct OutputLogProps {
+    /// Signal containing all log lines to display.
+    /// Updated by [`runner::run_download`](crate::core::runner::run_download).
     pub log_lines: Signal<Vec<String>>,
 }
 
-/// Scrollable log panel showing yt-dlp stdout/stderr
+// -------------------------------------------- Public API --------------------------------------------
+
+/// Renders a scrollable log panel with color-coded output.
+///
+/// Each line from `log_lines` is rendered with syntax highlighting
+/// based on its content. The panel auto-scrolls as new lines arrive.
+///
+/// # Arguments
+///
+/// * `props` - Contains `log_lines` signal for reading output.
+///
+/// # Empty State
+///
+/// When `log_lines` is empty, displays a placeholder message:
+/// "Output will appear here…"
+///
+/// # Styling
+///
+/// - Dark background (`#050510`)
+/// - Monospace font
+/// - Color-coded lines via [`log_line_style`]
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let log_lines = use_signal(Vec::<String>::new);
+///
+/// rsx! {
+///     OutputLog { log_lines }
+/// }
+/// ```
 #[component]
 pub fn OutputLog(props: OutputLogProps) -> Element {
     let log_lines = props.log_lines;
@@ -50,9 +97,29 @@ pub fn OutputLog(props: OutputLogProps) -> Element {
     }
 }
 
-// -------------------------------------------- Private Helper Functions --------------------------------------------
+// -------------------------------------------- Internal Helpers --------------------------------------------
 
-/// Color-code log lines by content
+/// Returns CSS color style based on line content.
+///
+/// Analyzes the line content to determine appropriate color coding
+/// for better visual parsing of yt-dlp output.
+///
+/// # Arguments
+///
+/// * `line` - The log line to analyze.
+///
+/// # Returns
+///
+/// A static CSS color string.
+///
+/// # Matching Rules
+///
+/// 1. Lines starting with `✔` → Green (success)
+/// 2. Lines starting with `✗` or `⚠` → Red (error/warning)
+/// 3. Lines starting with `▶` or `$` → Purple (command)
+/// 4. Lines containing `[download]` → Cyan (download progress)
+/// 5. Lines containing `[info]` → Orange (info)
+/// 6. All other lines → Gray (default)
 fn log_line_style(line: &str) -> &'static str {
     if line.starts_with("✔") {
         "color: #50fa7b;"

@@ -1,4 +1,11 @@
-//! main.rs - Entry point for yt-dlp-gui desktop application
+//! main.rs - Entry point for the nomnom desktop application.
+//!
+//! This file is responsible for:
+//! - Configuring the Dioxus desktop window (title, size, resizability)
+//! - Launching the application with the root [`app`] component
+//!
+//! The application is built using the Dioxus framework for Rust,
+//! providing a native desktop GUI with async capabilities.
 
 use dioxus::prelude::*;
 

@@ -1,4 +1,20 @@
-//! runner.rs - Builds and spawns the yt-dlp subprocess
+//! runner.rs - yt-dlp subprocess management and output streaming.
+//!
+//! This module provides:
+//! - Command string building for UI preview ([`build_command_string`])
+//! - Async subprocess spawning with live output ([`run_download`])
+//! - Raw command execution for the terminal panel ([`run_raw_command`])
+//!
+//! # Architecture
+//!
+//! The runner uses `tokio::process::Command` for async subprocess management.
+//! Output is streamed line-by-line via `AsyncBufReadExt` and written to
+//! a Dioxus [`Signal<Vec<String>>`] for real-time UI updates.
+//!
+//! # Error Handling
+//!
+//! All errors are captured and written to the log as user-friendly messages.
+//! The application never panics from subprocess failures.
 
 use dioxus::prelude::*;
 use std::process::Stdio;
@@ -9,9 +25,38 @@ use tokio::{
 
 use crate::core::flags::Flag;
 
-// -------------------------------------------- Public Functions --------------------------------------------
+// -------------------------------------------- Public API --------------------------------------------
 
-/// Build the preview command string shown in the UI
+/// Builds a human-readable command string for the UI preview.
+///
+/// This function constructs the exact command that would be run in a terminal,
+/// useful for showing users what will execute before they click download.
+///
+/// # Arguments
+///
+/// * `url` - The video/playlist URL to download.
+/// * `flags` - Slice of active flags to include in the command.
+/// * `output_dir` - Directory where files will be saved.
+///
+/// # Returns
+///
+/// A formatted command string like:
+/// ```text
+/// yt-dlp --add-metadata -o "/home/user/Downloads/%(title)s.%(ext)s" "https://youtube.com/..."
+/// ```
+///
+/// If `url` is empty, returns a placeholder: `"yt-dlp [url] ..."`.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let cmd = build_command_string(
+///     "https://youtube.com/watch?v=abc",
+///     &[Flag { flag: "--no-overwrites", ... }],
+///     "/home/user/Downloads"
+/// );
+/// assert!(cmd.starts_with("yt-dlp"));
+/// ```
 pub fn build_command_string(url: &str, flags: &[Flag], output_dir: &str) -> String {
     if url.trim().is_empty() {
         return "yt-dlp [url] ...".to_string();
@@ -27,7 +72,46 @@ pub fn build_command_string(url: &str, flags: &[Flag], output_dir: &str) -> Stri
     format!("yt-dlp {} {} \"{}\"", flags_str, output_template, url)
 }
 
-/// Spawn yt-dlp and stream output lines into `log_lines`
+/// Spawns yt-dlp as a subprocess and streams output to the log.
+///
+/// This is the main download function that:
+/// 1. Constructs the argument list from flags and URL
+/// 2. Spawns yt-dlp with piped stdout/stderr
+/// 3. Streams output lines to `log_lines` in real-time
+/// 4. Updates `is_running` state on completion
+///
+/// # Arguments
+///
+/// * `url` - The video/playlist URL to download.
+/// * `flags` - Active flags to pass to yt-dlp.
+/// * `output_dir` - Directory for output files.
+/// * `log_lines` - Signal to receive output lines (will be cleared first).
+/// * `is_running` - Signal to track running state.
+///
+/// # Async Behavior
+///
+/// This function runs asynchronously and updates signals as output arrives.
+/// The UI will re-render automatically as `log_lines` is modified.
+///
+/// # Error Handling
+///
+/// - If yt-dlp fails to spawn, an error message is pushed to `log_lines`
+/// - If yt-dlp exits non-zero, the exit status is logged
+/// - stderr lines are prefixed with `⚠` for visibility
+///
+/// # Example
+///
+/// ```rust,ignore
+/// spawn(async move {
+///     run_download(
+///         url.clone(),
+///         flags.clone(),
+///         output_dir.clone(),
+///         log_lines,
+///         is_running,
+///     ).await;
+/// });
+/// ```
 pub async fn run_download(
     url: String,
     flags: Vec<Flag>,
@@ -103,7 +187,38 @@ pub async fn run_download(
     }
 }
 
-/// Run an arbitrary raw command string (from the terminal panel)
+/// Executes an arbitrary command string from the terminal panel.
+///
+/// This function allows power users to run any yt-dlp command directly,
+/// bypassing the GUI flag selection.
+///
+/// # Arguments
+///
+/// * `raw` - The raw command string to execute (e.g., `"yt-dlp -f best URL"`).
+/// * `log_lines` - Signal to receive output lines.
+/// * `is_running` - Signal to track running state.
+///
+/// # Parsing
+///
+/// The command is split on whitespace. The first token is the command,
+/// remaining tokens are arguments.
+///
+/// # Security Note
+///
+/// This function runs arbitrary commands on the user's system.
+/// It is intended for advanced users who understand the risks.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// spawn(async move {
+///     run_raw_command(
+///         "yt-dlp --version".to_string(),
+///         log_lines,
+///         is_running,
+///     ).await;
+/// });
+/// ```
 pub async fn run_raw_command(
     raw: String,
     mut log_lines: Signal<Vec<String>>,

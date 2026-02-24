@@ -1,18 +1,70 @@
-//! preset_panel.rs - Preset selector sidebar section
+//! preset_panel.rs - Preset selector cards in the sidebar.
+//!
+//! This component renders clickable preset cards that allow users to
+//! quickly select pre-configured flag combinations.
+//!
+//! # Visual Layout
+//!
+//! ```text
+//! ⚡ PRESETS
+//! ┌──────────────────────┐
+//! │ 🎬 Best Video        │ ← Active (purple border)
+//! │ Best quality video   │
+//! └──────────────────────┘
+//! ┌──────────────────────┐
+//! │ 🎵 Audio Only (MP3)  │ ← Inactive
+//! │ Extract audio as MP3 │
+//! └──────────────────────┘
+//! ...
+//! ┌──────────────────────┐
+//! │ 🔧 Custom            │ ← Clears all flags
+//! │ Pick flags manually  │
+//! └──────────────────────┘
+//! ```
 
 use crate::core::flags::Flag;
-use crate::core::presets::{all_presets, resolve_preset_flags, Preset};
+use crate::core::presets::{Preset, all_presets, resolve_preset_flags};
 use dioxus::prelude::*;
 
-// -------------------------------------------- Public Functions --------------------------------------------
+// -------------------------------------------- Types --------------------------------------------
 
+/// Props for the [`PresetPanel`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct PresetPanelProps {
+    /// Signal holding the currently active preset.
+    /// `None` indicates "Custom" mode.
     pub active_preset: Signal<Option<Preset>>,
+    /// Signal holding active flags (updated when preset is selected).
     pub active_flags: Signal<Vec<Flag>>,
 }
 
-/// Renders clickable preset cards in the sidebar
+// -------------------------------------------- Public API --------------------------------------------
+
+/// Renders clickable preset cards for quick flag configuration.
+///
+/// Displays all built-in presets plus a "Custom" option that clears
+/// all flags for manual selection.
+///
+/// # Arguments
+///
+/// * `props` - Contains `active_preset` and `active_flags` signals.
+///
+/// # Behavior
+///
+/// - Clicking a preset resolves its flags and updates `active_flags`
+/// - Clicking "Custom" sets `active_preset` to `None` and clears flags
+/// - Active preset shows purple border, inactive shows dark border
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let active_preset = use_signal(|| Some(default_preset()));
+/// let active_flags = use_signal(Vec::<Flag>::new);
+///
+/// rsx! {
+///     PresetPanel { active_preset, active_flags }
+/// }
+/// ```
 #[component]
 pub fn PresetPanel(props: PresetPanelProps) -> Element {
     let mut active_preset = props.active_preset;
@@ -96,8 +148,17 @@ pub fn PresetPanel(props: PresetPanelProps) -> Element {
     }
 }
 
-// -------------------------------------------- Private Helper Functions --------------------------------------------
+// -------------------------------------------- Internal Helpers --------------------------------------------
 
+/// Returns inline CSS for a preset card based on active state.
+///
+/// # Arguments
+///
+/// * `active` - Whether this preset is currently selected.
+///
+/// # Returns
+///
+/// A static CSS string for the card style.
 fn preset_card_style(active: bool) -> &'static str {
     if active {
         "
