@@ -20,8 +20,8 @@ pub fn TerminalPanel(props: TerminalPanelProps) -> Element {
 
     let on_run = move |_| {
         let cmd = raw_input.read().clone();
-        let log = log_lines.clone();
-        let running = is_running.clone();
+        let log = log_lines; // using `clone` on type `Signal<Vec<String>>` which implements the `Copy` trait
+        let running = is_running; // using `clone` on type `Signal<bool>` which implements the `Copy` trait
 
         spawn(async move {
             runner::run_raw_command(cmd, log, running).await;
@@ -66,8 +66,8 @@ pub fn TerminalPanel(props: TerminalPanelProps) -> Element {
                     onkeydown: move |e| {
                         if e.key() == Key::Enter {
                             let cmd = raw_input.read().clone();
-                            let log = log_lines.clone();
-                            let running = is_running.clone();
+                            let log = log_lines; // using `clone` on type `Signal<Vec<String>>` which implements the `Copy` trait
+                            let running = is_running; // using `clone` on type `Signal<bool>` which implements the `Copy` trait
                             spawn(async move {
                                 runner::run_raw_command(cmd, log, running).await;
                             });

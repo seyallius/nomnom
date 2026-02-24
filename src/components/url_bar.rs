@@ -27,7 +27,7 @@ pub fn UrlBar(props: UrlBarProps) -> Element {
     let is_running = props.is_running;
 
     let on_pick_folder = move |_| {
-        let mut output_dir = output_dir.clone();
+        let mut output_dir = output_dir; // using `clone` on type `Signal<String>` which implements the `Copy` trait
         async move {
             if let Some(folder) = rfd::AsyncFileDialog::new()
                 .set_title("Choose download folder")
@@ -52,8 +52,8 @@ pub fn UrlBar(props: UrlBarProps) -> Element {
             return;
         }
 
-        let log = log_lines.clone();
-        let running = is_running.clone();
+        let log = log_lines; //  using `clone` on type `Signal<Vec<String>>` which implements the `Copy` trait
+        let running = is_running; // using `clone` on type `Signal<bool>` which implements the `Copy` trait
 
         spawn(async move {
             runner::run_download(url_val, flags, dir, log, running).await;

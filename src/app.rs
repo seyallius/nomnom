@@ -14,7 +14,7 @@ use crate::core::{flags::Flag, presets::Preset};
 #[component]
 pub fn App() -> Element {
     // -- URL the user wants to download
-    let url = use_signal(|| String::new());
+    let url = use_signal::<String>(String::new);
 
     // -- Active flags selected by the user
     let active_flags: Signal<Vec<Flag>> = use_signal(Vec::new);
@@ -71,7 +71,7 @@ pub fn App() -> Element {
                 span { style: "font-size: 22px;", "📥" }
                 h1 {
                     style: "margin: 0; font-size: 18px; color: #6c63ff; letter-spacing: 1px;",
-                    "yt-dlp  GUI"
+                    "nomnom... gib me URLs!"
                 }
             }
 

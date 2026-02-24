@@ -31,12 +31,17 @@ rust-nightly:
 rust-nightly-unset:
     rustup override unset
 
-# Build Rust binary (release)
+# Check rust code without building
+[group('Rust')]
+c mode="":
+    cargo check
+
+# Build Rust binary
 [group('Rust')]
 b mode="":
     cargo build {{mode}}
 
-# Run Rust binary with timing
+# Run Rust binary
 [group('Rust')]
 r mode="": b
     cargo r {{mode}}
@@ -49,11 +54,6 @@ r mode="": b
 [group('Code Quality')]
 fmt-rust:
     cargo fmt
-
-# Check Rust code without building
-[group('Code Quality')]
-check-rust:
-    cargo check
 
 # Run Rust linter (clippy)
 [group('Code Quality')]

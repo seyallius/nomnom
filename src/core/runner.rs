@@ -112,7 +112,7 @@ pub async fn run_raw_command(
     is_running.set(true);
     log_lines.write().push(format!("$ {raw}"));
 
-    let tokens: Vec<&str> = raw.trim().split_whitespace().collect();
+    let tokens: Vec<&str> = raw.split_whitespace().collect();
     if tokens.is_empty() {
         is_running.set(false);
         return;
