@@ -5,7 +5,6 @@ use dioxus::prelude::*;
 mod app;
 mod components;
 mod core;
-mod core;
 
 fn main() {
     let cfg = dioxus::desktop::Config::new()

@@ -1,6 +1,6 @@
 //! presets.rs - Pre-configured flag sets for common use cases
 
-use crate::core::flags::{all_flags, Flag, FlagCategory};
+use crate::core::flags::{all_flags, Flag};
 use serde::{Deserialize, Serialize};
 
 // -------------------------------------------- Public Types --------------------------------------------

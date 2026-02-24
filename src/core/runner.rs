@@ -1,10 +1,11 @@
 //! runner.rs - Builds and spawns the yt-dlp subprocess
 
-use std::path::PathBuf;
+use dioxus::prelude::*;
 use std::process::Stdio;
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::Command;
-use dioxus::prelude::Signal;
+use tokio::{
+    io::{AsyncBufReadExt, BufReader},
+    process::Command,
+};
 
 use crate::core::flags::Flag;
 
@@ -16,11 +17,7 @@ pub fn build_command_string(url: &str, flags: &[Flag], output_dir: &str) -> Stri
         return "yt-dlp [url] ...".to_string();
     }
 
-    let flags_str = flags
-        .iter()
-        .map(|f| f.flag)
-        .collect::<Vec<_>>()
-        .join(" ");
+    let flags_str = flags.iter().map(|f| f.flag).collect::<Vec<_>>().join(" ");
 
     let output_template = format!(
         "-o \"{}/%(title)s.%(ext)s\"",
@@ -45,10 +42,7 @@ pub async fn run_download(
     let output_template = format!("{}/%(title)s.%(ext)s", output_dir.trim_end_matches('/'));
 
     // Build args vec
-    let mut args: Vec<String> = vec![
-        "-o".to_string(),
-        output_template,
-    ];
+    let mut args: Vec<String> = vec!["-o".to_string(), output_template];
 
     for flag in &flags {
         // Each flag may have multiple tokens e.g. "--audio-format mp3"
@@ -66,8 +60,12 @@ pub async fn run_download(
 
     match result {
         Err(e) => {
-            log_lines.write().push(format!("✗ Failed to spawn yt-dlp: {e}"));
-            log_lines.write().push("  Make sure yt-dlp is installed and in your PATH.".to_string());
+            log_lines
+                .write()
+                .push(format!("✗ Failed to spawn yt-dlp: {e}"));
+            log_lines
+                .write()
+                .push("  Make sure yt-dlp is installed and in your PATH.".to_string());
             is_running.set(false);
         }
         Ok(mut child) => {
@@ -91,7 +89,9 @@ pub async fn run_download(
                     log_lines.write().push("✔ Download complete!".to_string());
                 }
                 Ok(status) => {
-                    log_lines.write().push(format!("✗ yt-dlp exited with: {status}"));
+                    log_lines
+                        .write()
+                        .push(format!("✗ yt-dlp exited with: {status}"));
                 }
                 Err(e) => {
                     log_lines.write().push(format!("✗ Wait error: {e}"));

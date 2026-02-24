@@ -2,7 +2,6 @@
 
 use crate::core::flags::{all_flags, Flag, FlagCategory};
 use dioxus::prelude::*;
-use std::collections::HashMap;
 
 // -------------------------------------------- Public Functions --------------------------------------------
 

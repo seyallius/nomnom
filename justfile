@@ -33,13 +33,13 @@ rust-nightly-unset:
 
 # Build Rust binary (release)
 [group('Rust')]
-rustb:
-    cd {{rust_dir}} && cargo build --release
+b mode="":
+    cargo build {{mode}}
 
 # Run Rust binary with timing
 [group('Rust')]
-rust: rustb
-    {{rust_bin}}
+r mode="": b
+    cargo r {{mode}}
 
 # ------------------------------------------------------------------------------
 # Code Quality
@@ -48,17 +48,17 @@ rust: rustb
 # Format Rust code
 [group('Code Quality')]
 fmt-rust:
-    cd {{rust_dir}} && cargo fmt
+    cargo fmt
 
 # Check Rust code without building
 [group('Code Quality')]
 check-rust:
-    cd {{rust_dir}} && cargo check
+    cargo check
 
 # Run Rust linter (clippy)
 [group('Code Quality')]
 clippy:
-    cd {{rust_dir}} && cargo clippy -- -D warnings
+    cargo clippy -- -D warnings
 
 # ------------------------------------------------------------------------------
 # Testing
@@ -67,7 +67,7 @@ clippy:
 # Run Rust tests
 [group('Testing')]
 test-rust:
-    cd {{rust_dir}} && cargo test
+    cargo test
 
 # ------------------------------------------------------------------------------
 # Cleanup
@@ -76,7 +76,7 @@ test-rust:
 # Clean Rust build artifacts
 [group('Cleanup')]
 clean-rust:
-    cd {{rust_dir}} && cargo clean
+    cargo clean
 
 # ------------------------------------------------------------------------------
 # Git

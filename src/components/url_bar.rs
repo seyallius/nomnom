@@ -20,7 +20,7 @@ pub struct UrlBarProps {
 #[component]
 pub fn UrlBar(props: UrlBarProps) -> Element {
     let mut url = props.url;
-    let mut output_dir = props.output_dir;
+    let output_dir = props.output_dir;
     let built_command = props.built_command;
     let active_flags = props.active_flags;
     let log_lines = props.log_lines;
