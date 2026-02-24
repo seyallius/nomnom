@@ -115,7 +115,7 @@ pub fn UrlBar(props: UrlBarProps) -> Element {
         let url_val = url.read().clone();
         let flags = active_flags.read().clone();
         let dir = output_dir.read().clone();
-        let handle = child_handle.read().clone();  // clone the Arc, cheap
+        let handle = child_handle.read().clone(); // clone the Arc, cheap
 
         if url_val.trim().is_empty() {
             log_lines
@@ -235,7 +235,8 @@ enum ButtonKind {
 /// Returns inline CSS for a button based on its kind.
 fn button_style(kind: ButtonKind, _disabled: bool) -> &'static str {
     match kind {
-        ButtonKind::Download => "
+        ButtonKind::Download => {
+            "
             padding: 10px 18px;
             background: #6c63ff;
             color: white;
@@ -244,8 +245,10 @@ fn button_style(kind: ButtonKind, _disabled: bool) -> &'static str {
             cursor: pointer;
             font-size: 13px;
             font-weight: bold;
-        ",
-        ButtonKind::Stop => "
+        "
+        }
+        ButtonKind::Stop => {
+            "
             padding: 10px 18px;
             background: #ff4444;
             color: white;
@@ -254,8 +257,10 @@ fn button_style(kind: ButtonKind, _disabled: bool) -> &'static str {
             cursor: pointer;
             font-size: 13px;
             font-weight: bold;
-        ",
-        ButtonKind::Folder => "
+        "
+        }
+        ButtonKind::Folder => {
+            "
             padding: 10px 18px;
             background: #2a2a4a;
             color: #e0e0e0;
@@ -263,6 +268,7 @@ fn button_style(kind: ButtonKind, _disabled: bool) -> &'static str {
             border-radius: 6px;
             cursor: pointer;
             font-size: 13px;
-        ",
+        "
+        }
     }
 }

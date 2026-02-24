@@ -23,7 +23,7 @@
 //! ```
 
 use crate::core::flags::Flag;
-use crate::core::presets::{Preset, all_presets, resolve_preset_flags};
+use crate::core::presets::{all_presets, resolve_preset_flags, Preset};
 use dioxus::prelude::*;
 
 // -------------------------------------------- Types --------------------------------------------
