@@ -136,8 +136,13 @@ pub async fn run_download(
     }
     args.push(url.clone());
 
-    let result = Command::new("yt-dlp")
-        .args(&args)
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
+    let result = Command::new(&shell)
+        .arg("-i")
+        .arg("-c")
+        .arg("yt-dlp \"$@\"")   // $@ expands positional args safely
+        .arg("--")               // marks end of shell options, $0 placeholder
+        .args(&args)             // each arg passed as its own element, no parsing
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn();
@@ -235,8 +240,9 @@ pub async fn run_raw_command(
 
     let (cmd, args) = tokens.split_first().unwrap();
 
-    let result = Command::new(cmd)
-        .args(args)
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
+    let result = Command::new(&shell)
+        .args(["-i", "-c", &cmd])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn();
