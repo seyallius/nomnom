@@ -30,7 +30,7 @@ pub struct UrlBarProps {
     /// Signal holding the output directory path.
     pub output_dir: Signal<String>,
     /// Memoized command preview string.
-    pub built_command: ReadOnlySignal<String>,
+    pub built_command: ReadSignal<String>,
     /// Signal holding active flags for the download.
     pub active_flags: Signal<Vec<Flag>>,
     /// Signal for log output.
@@ -93,9 +93,8 @@ pub fn UrlBar(props: UrlBarProps) -> Element {
     let log_lines = props.log_lines;
     let is_running = props.is_running;
 
-    /// Handles folder picker button click.
-    ///
-    /// Opens a native OS folder dialog and updates `output_dir` on selection.
+    // Handles folder picker button click.
+    // Opens a native OS folder dialog and updates `output_dir` on selection.
     let on_pick_folder = move |_| {
         let mut output_dir = output_dir;
         async move {
@@ -109,9 +108,8 @@ pub fn UrlBar(props: UrlBarProps) -> Element {
         }
     };
 
-    /// Handles download button click.
-    ///
-    /// Validates URL, spawns download task, and updates log.
+    // Handles download button click.
+    // Validates URL, spawns download task, and updates log.
     let on_download = move |_| {
         let url_val = url.read().clone();
         let flags = active_flags.read().clone();
