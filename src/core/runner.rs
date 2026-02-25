@@ -171,6 +171,7 @@ pub async fn run_download(
         .arg("-i")
         .arg("-c")
         .arg("yt-dlp \"$@\"") // $@ expands positional args safely
+        .arg("--remote-components ejs:github") // Allow yt-dlp to download the scripts from GitHub automatically
         .arg("--") // marks end of shell options, $0 placeholder
         .args(&args) // each arg passed as its own element, no parsing
         .stdout(Stdio::piped())
