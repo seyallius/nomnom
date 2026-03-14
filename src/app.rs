@@ -1,32 +1,50 @@
 //! app.rs - Root application component and global state management.
 //!
-//! This module defines the top-level [`App`] component that:
-//! - Owns all shared reactive state via Dioxus [`Signal`]s
-//! - Orchestrates the layout (sidebar + main content area)
-//! - Wires child components together through props
+//! This module owns all reactive state and wires child components together.
 //!
 //! # Architecture
 //!
-//! All application state lives here and flows down to child components.
-//! Child components read/write state through props, never global context.
+//! All state lives here and flows down through props. No global context is used.
 //!
 //! # Data Flow
 //!
 //! ```text
 //! App (owns all Signals)
-//! ├── preset_panel   → reads/writes active_preset, active_flags
-//! ├── flag_panel     → reads/writes active_flags
-//! ├── url_bar        → reads/writes url, output_dir, log_lines, is_running
-//! ├── terminal_panel → reads/writes log_lines, is_running
-//! └── output_log     → reads log_lines
+//! ├── PresetPanel    → reads/writes active_preset, active_flags,
+//! │                    download_type, download_source, quality
+//! ├── ModeSelector   → reads/writes download_type, download_source, quality,
+//! │                    active_preset
+//! ├── UrlBar         → reads/writes url, batch_file, archive_file, output_dir,
+//! │                    reads built_command, active_flags, log_lines, is_running
+//! ├── TerminalPanel  → reads/writes log_lines, is_running
+//! ├── FlagPanel      → reads/writes active_flags
+//! └── OutputLog      → reads log_lines
+//! ```
+//!
+//! # Layout
+//!
+//! ```text
+//! ┌─────────────────────────────────────────────────────────────┐
+//! │ Header: "📥 nomnom"                                         │
+//! ├──────────────┬──────────────────────────────────────────────┤
+//! │ PresetPanel  │ ModeSelector (type / source / quality)       │
+//! │ FlagPanel    │ UrlBar (input + archive + folder + button)   │
+//! │              │ TerminalPanel (raw cmd)                      │
+//! │              │ OutputLog (streaming log)                    │
+//! └──────────────┴──────────────────────────────────────────────┘
 //! ```
 
 use crate::{
     components::{
-        flag_panel::FlagPanel, output_log::OutputLog, preset_panel::PresetPanel,
-        terminal_panel::TerminalPanel, url_bar::UrlBar,
+        flag_panel::FlagPanel, mode_selector::ModeSelector, output_log::OutputLog,
+        preset_panel::PresetPanel, terminal_panel::TerminalPanel, url_bar::UrlBar,
     },
-    core::{flags::Flag, presets::Preset, runner::ChildHandle},
+    core::{
+        download_mode::{DownloadSource, DownloadType, Quality},
+        flags::Flag,
+        presets::{default_preset, resolve_preset_flags, Preset},
+        runner::{self, ChildHandle},
+    },
 };
 use dioxus::prelude::*;
 use std::sync::{Arc, Mutex};
@@ -35,52 +53,46 @@ use std::sync::{Arc, Mutex};
 
 /// Root application component holding all shared reactive state.
 ///
-/// This is the top-level component that:
-/// 1. Initializes all application state with sensible defaults
-/// 2. Computes derived state (like the command preview)
-/// 3. Renders the full application layout
+/// # State Defaults
 ///
-/// # State Initialization
-///
-/// | State           | Default Value                |
-/// |-------          |----------------------------- |
-/// | `url`           | Empty string                 |
-/// | `active_flags`  | Empty (populated by preset)  |
-/// | `active_preset` | First preset ("Best Video")  |
-/// | `output_dir`    | OS download directory or `.` |
-/// | `log_lines`     | Empty vec                    |
-/// | `is_running`    | `false`                      |
-///
-/// # Layout Structure
-///
-/// ```text
-/// ┌────────────────────────────────────────────┐
-/// │ Header: "📥 nomnom... gib me URLs!"         │
-/// ├──────────────┬─────────────────────────────┤
-/// │ PresetPanel  │ UrlBar                      │
-/// │ FlagPanel    │ TerminalPanel               │
-/// │ (sidebar)    │ OutputLog                   │
-/// └──────────────┴─────────────────────────────┘
-/// ```
+/// | Signal            | Default                              |
+/// |-------------------|--------------------------------------|
+/// | `download_type`   | `Video`                              |
+/// | `download_source` | `Single`                             |
+/// | `quality`         | `HD1080`                             |
+/// | `url`             | empty                                |
+/// | `batch_file`      | empty                                |
+/// | `archive_file`    | empty                                |
+/// | `output_dir`      | OS Downloads folder (or `.`)         |
+/// | `active_flags`    | resolved from default preset         |
+/// | `active_preset`   | `Some("single_video")`               |
+/// | `log_lines`       | empty                                |
+/// | `is_running`      | `false`                              |
 #[component]
 pub fn App() -> Element {
-    // ── Initialize all reactive state ─────────────────────────────────────
+    // ── Download configuration state ─────────────────────────────────────
+
+    // Whether to download video or extract audio.
+    let download_type: Signal<DownloadType> = use_signal(DownloadType::default);
+
+    // URL source + output folder organization strategy.
+    let download_source: Signal<DownloadSource> = use_signal(DownloadSource::default);
+
+    // Video resolution cap.
+    let quality: Signal<Quality> = use_signal(Quality::default);
+
+    // ── Input state ───────────────────────────────────────────────────────
 
     // The URL the user wants to download.
-    // Updated by [`UrlBar`] and read by the command builder.
     let url = use_signal::<String>(String::new);
 
-    // Currently active flags selected by the user.
-    // Can be populated by selecting a preset or toggling individual flags.
-    let active_flags: Signal<Vec<Flag>> = use_signal(Vec::new);
+    // Path to a batch text file (one URL per line).
+    let batch_file = use_signal::<String>(String::new);
 
-    // The currently active preset.
-    // `None` indicates "Custom" mode where the user picks flags manually.
-    let active_preset: Signal<Option<Preset>> =
-        use_signal(|| Some(crate::core::presets::default_preset()));
+    // Path to a yt-dlp download archive file (optional; empty = disabled).
+    let archive_file = use_signal::<String>(String::new);
 
-    // Output folder where downloads will be saved.
-    // Defaults to the OS download directory, falling back to current directory.
+    // Output directory for all downloaded files.
     let output_dir = use_signal(|| {
         dirs::download_dir()
             .unwrap_or_else(|| std::path::PathBuf::from("."))
@@ -88,30 +100,45 @@ pub fn App() -> Element {
             .to_string()
     });
 
-    // Log lines captured from yt-dlp stdout/stderr.
-    // Displayed in real-time by [`OutputLog`].
+    // ── Preset + flag state ───────────────────────────────────────────────
+
+    let initial_preset = default_preset();
+    let initial_flags = resolve_preset_flags(&initial_preset);
+
+    // Currently active flags — populated by preset or manual toggle.
+    let active_flags: Signal<Vec<Flag>> = use_signal(|| initial_flags);
+
+    // Currently active preset. `None` = Custom mode.
+    let active_preset: Signal<Option<Preset>> = use_signal(|| Some(initial_preset));
+
+    // ── Runtime state ─────────────────────────────────────────────────────
+
+    // Lines captured from yt-dlp stdout/stderr — streamed to the log panel.
     let log_lines: Signal<Vec<String>> = use_signal(Vec::new);
 
-    // Flag indicating whether a download is currently in progress.
-    // Used to disable the download button and show loading state.
+    // Whether a download is currently in progress.
     let is_running = use_signal(|| false);
 
-    // Shared handle to the active child process.
-    // Stored in a Signal so it's reactive and accessible from stop button.
-    // Arc<Mutex<...>> because it must cross async task + onclick boundaries.
+    // Shared handle to the active child process for cancellation.
     let child_handle: Signal<ChildHandle> = use_signal(|| Arc::new(Mutex::new(None)));
 
-    // Memoized command preview string.
-    // Recomputes automatically when `url`, `active_flags`, or `output_dir` change.
+    // ── Derived state ─────────────────────────────────────────────────────
+
+    // Memoised command preview — recomputed whenever any input signal changes.
     let built_command = use_memo(move || {
-        crate::core::runner::build_command_string(
-            &url.read(),
-            &active_flags.read(),
-            &output_dir.read(),
-        )
+        runner::build_command_string(&runner::DownloadRequest {
+            url: url.read().clone(),
+            batch_file: batch_file.read().clone(),
+            archive_file: archive_file.read().clone(),
+            download_type: download_type.read().clone(),
+            download_source: download_source.read().clone(),
+            quality: quality.read().clone(),
+            output_dir: output_dir.read().clone(),
+            extra_flags: active_flags.read().clone(),
+        })
     });
 
-    // ── Render the application layout ─────────────────────────────────────
+    // ── Render ────────────────────────────────────────────────────────────
 
     rsx! {
         div {
@@ -119,30 +146,64 @@ pub fn App() -> Element {
                 display: flex;
                 flex-direction: column;
                 height: 100vh;
-                background: #0f0f0f;
+                background: #0b0b14;
                 color: #e0e0e0;
-                font-family: 'JetBrains Mono', 'Fira Code', monospace;
+                font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
                 overflow: hidden;
             ",
 
-            // ── Header ──────────────────────────────────
+            // ── Header ──────────────────────────────────────────────────
             div {
                 style: "
-                    padding: 14px 20px;
-                    background: #1a1a2e;
+                    padding: 12px 20px;
+                    background: #0f0f1e;
                     border-bottom: 2px solid #6c63ff;
                     display: flex;
                     align-items: center;
                     gap: 12px;
+                    flex-shrink: 0;
                 ",
-                span { style: "font-size: 22px;", "📥" }
+                span { style: "font-size: 20px;", "📥" }
                 h1 {
-                    style: "margin: 0; font-size: 18px; color: #6c63ff; letter-spacing: 1px;",
-                    "nomnom... gib me URLs!"
+                    style: "
+                        margin: 0;
+                        font-size: 16px;
+                        color: #6c63ff;
+                        letter-spacing: 2px;
+                        font-weight: bold;
+                    ",
+                    "nomnom"
+                }
+                span {
+                    style: "
+                        font-size: 11px;
+                        color: #444;
+                        letter-spacing: 1px;
+                        margin-left: 4px;
+                    ",
+                    "gib me URLs"
+                }
+
+                // Spacer
+                div { style: "flex: 1;" }
+
+                // Status indicator
+                if *is_running.read() {
+                    div {
+                        style: "
+                            display: flex;
+                            align-items: center;
+                            gap: 6px;
+                            font-size: 11px;
+                            color: #6c63ff;
+                        ",
+                        span { "⏳" }
+                        "Downloading…"
+                    }
                 }
             }
 
-            // ── Main body ────────────────────────────────
+            // ── Main body ────────────────────────────────────────────────
             div {
                 style: "
                     display: flex;
@@ -150,29 +211,41 @@ pub fn App() -> Element {
                     overflow: hidden;
                 ",
 
-                // Left sidebar: presets + flags
+                // ── Left sidebar ─────────────────────────────────────────
                 div {
                     style: "
-                        width: 300px;
-                        min-width: 260px;
-                        background: #111122;
-                        border-right: 1px solid #2a2a4a;
+                        width: 280px;
+                        min-width: 240px;
+                        background: #0e0e1c;
+                        border-right: 1px solid #1e1e36;
                         display: flex;
                         flex-direction: column;
                         overflow-y: auto;
-                        padding: 12px;
+                        padding: 14px 10px;
                         gap: 16px;
                     ",
+
                     PresetPanel {
                         active_preset,
                         active_flags,
+                        download_type,
+                        download_source,
+                        quality,
                     }
-                    FlagPanel {
-                        active_flags,
+
+                    // Divider
+                    div {
+                        style: "
+                            height: 1px;
+                            background: #1e1e36;
+                            margin: 0 4px;
+                        "
                     }
+
+                    FlagPanel { active_flags }
                 }
 
-                // Right area: url + command preview + terminal + log
+                // ── Right content area ────────────────────────────────────
                 div {
                     style: "
                         flex: 1;
@@ -180,11 +253,23 @@ pub fn App() -> Element {
                         flex-direction: column;
                         overflow: hidden;
                         padding: 12px;
-                        gap: 12px;
+                        gap: 10px;
                     ",
 
+                    ModeSelector {
+                        download_type,
+                        download_source,
+                        quality,
+                        active_preset,
+                    }
+
                     UrlBar {
+                        download_type,
+                        download_source,
+                        quality,
                         url,
+                        batch_file,
+                        archive_file,
                         output_dir,
                         built_command,
                         active_flags,

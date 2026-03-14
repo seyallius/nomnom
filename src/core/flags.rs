@@ -1,4 +1,4 @@
-//! flags.rs - Complete yt-dlp flag definitions and categorization.
+//! flags.rs - Complete yt-dlp flag definitions and categorisation.
 //!
 //! This module provides:
 //! - The [`Flag`] struct representing a single yt-dlp CLI flag
@@ -9,11 +9,11 @@
 //!
 //! Flags are defined as static `&'static str` to avoid allocations.
 //! Each flag carries metadata (label, description, category) to make
-//! the UI self-documenting.
+//! the UI self-documenting without any extra configuration.
 //!
 //! # Adding New Flags
 //!
-//! To add a new flag, simply append to the [`all_flags`] function:
+//! Append to the [`all_flags`] function:
 //!
 //! ```rust,ignore
 //! Flag {
@@ -28,10 +28,7 @@ use serde::{Deserialize, Serialize};
 
 // -------------------------------------------- Types --------------------------------------------
 
-/// A single yt-dlp CLI flag with associated metadata.
-///
-/// This struct captures everything needed to display and execute
-/// a yt-dlp flag in the GUI.
+/// A single yt-dlp CLI flag with associated display metadata.
 ///
 /// # Example
 ///
@@ -43,13 +40,6 @@ use serde::{Deserialize, Serialize};
 ///     category: FlagCategory::Playlist,
 /// }
 /// ```
-///
-/// # Fields
-///
-/// - `flag` - The exact CLI string passed to yt-dlp (e.g., `"--yes-playlist"`)
-/// - `label` - Short human-readable text shown on the toggle button
-/// - `description` - Longer explanation shown as a tooltip
-/// - `category` - Logical grouping for UI organization
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Flag {
     /// CLI flag string as passed to yt-dlp, e.g. `"--yes-playlist"`.
@@ -63,19 +53,6 @@ pub struct Flag {
 }
 
 /// Logical category for grouping flags in the sidebar UI.
-///
-/// Categories are displayed in a defined order with emoji prefixes
-/// to make navigation intuitive.
-///
-/// # Display Order
-///
-/// 1. Playlist
-/// 2. Metadata
-/// 3. Format
-/// 4. Subtitles
-/// 5. Audio
-/// 6. Network
-/// 7. Misc
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum FlagCategory {
     /// Flags controlling playlist download behavior.
@@ -102,10 +79,6 @@ impl FlagCategory {
     /// ```rust,ignore
     /// assert_eq!(FlagCategory::Playlist.label(), "📋 Playlist");
     /// ```
-    ///
-    /// # Returns
-    ///
-    /// A static string suitable for UI display.
     pub fn label(&self) -> &'static str {
         match self {
             FlagCategory::Playlist => "📋 Playlist",
@@ -123,28 +96,9 @@ impl FlagCategory {
 
 /// Returns all available yt-dlp flags known to the application.
 ///
-/// This function serves as the single source of truth for flag definitions.
-/// The UI iterates over this list to render toggle buttons.
-///
-/// # Organization
-///
-/// Flags are organized by category within the function body for readability.
-/// The order within each category determines the display order in the UI.
-///
-/// # Returns
-///
-/// A `Vec<Flag>` containing all defined flags. This is cheap to call
-/// as the data is embedded in the binary.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let flags = all_flags();
-/// let playlist_flags: Vec<_> = flags
-///     .iter()
-///     .filter(|f| f.category == FlagCategory::Playlist)
-///     .collect();
-/// ```
+/// This is the single source of truth for flag definitions.
+/// The UI iterates over this list to render toggle buttons,
+/// and presets reference `Flag::flag` strings to select subsets.
 pub fn all_flags() -> Vec<Flag> {
     vec![
         // ── Playlist ─────────────────────────────────────
@@ -157,7 +111,7 @@ pub fn all_flags() -> Vec<Flag> {
         Flag {
             flag: "--no-playlist",
             label: "No Playlist",
-            description: "Download only single video even if part of playlist",
+            description: "Download only single video even if part of a playlist",
             category: FlagCategory::Playlist,
         },
         Flag {
@@ -170,13 +124,25 @@ pub fn all_flags() -> Vec<Flag> {
         Flag {
             flag: "--add-metadata",
             label: "Add Metadata",
-            description: "Write metadata to the video file",
+            description: "Write metadata tags to the video file",
             category: FlagCategory::Metadata,
         },
         Flag {
-            flag: "--add-thumbnail",
+            flag: "--embed-thumbnail",
             label: "Embed Thumbnail",
-            description: "Embed video thumbnail into the file",
+            description: "Embed the video thumbnail as cover art in the file",
+            category: FlagCategory::Metadata,
+        },
+        Flag {
+            flag: "--embed-chapters",
+            label: "Embed Chapters",
+            description: "Add chapter markers from the video description to the file",
+            category: FlagCategory::Metadata,
+        },
+        Flag {
+            flag: "--embed-info-json",
+            label: "Embed Info JSON",
+            description: "Embed the full video metadata JSON as a file attachment",
             category: FlagCategory::Metadata,
         },
         Flag {
@@ -188,76 +154,76 @@ pub fn all_flags() -> Vec<Flag> {
         Flag {
             flag: "--write-info-json",
             label: "Write Info JSON",
-            description: "Save video metadata to a .info.json file",
+            description: "Save video metadata to a .info.json file on disk",
             category: FlagCategory::Metadata,
         },
         // ── Format ────────────────────────────────────────
         Flag {
             flag: "--merge-output-format mp4",
             label: "Force MP4",
-            description: "Merge output into MP4 container",
+            description: "Merge output into an MP4 container",
             category: FlagCategory::Format,
         },
         Flag {
             flag: "--merge-output-format mkv",
             label: "Force MKV",
-            description: "Merge output into MKV container",
+            description: "Merge output into an MKV container",
             category: FlagCategory::Format,
         },
         Flag {
             flag: "--remux-video mp4",
-            label: "Remux to MP4",
+            label: "Remux → MP4",
             description: "Remux the video into mp4 without re-encoding",
             category: FlagCategory::Format,
         },
         // ── Subtitles ─────────────────────────────────────
         Flag {
             flag: "--write-subs",
-            label: "Write Subtitles",
-            description: "Download subtitle files",
+            label: "Write Subs",
+            description: "Download subtitle files to disk",
             category: FlagCategory::Subtitles,
         },
         Flag {
             flag: "--write-auto-subs",
-            label: "Auto Subtitles",
+            label: "Auto Subs",
             description: "Download auto-generated subtitles",
             category: FlagCategory::Subtitles,
         },
         Flag {
             flag: "--embed-subs",
-            label: "Embed Subtitles",
-            description: "Embed subtitles into the video file",
+            label: "Embed Subs",
+            description: "Embed subtitles directly into the video file",
             category: FlagCategory::Subtitles,
         },
         Flag {
             flag: "--sub-langs en",
             label: "English Subs",
-            description: "Download English subtitles only",
+            description: "Restrict subtitle download to English only",
             category: FlagCategory::Subtitles,
         },
         // ── Audio ─────────────────────────────────────────
         Flag {
             flag: "--extract-audio",
             label: "Extract Audio",
-            description: "Convert video to audio-only",
+            description: "Convert video to audio-only output",
             category: FlagCategory::Audio,
         },
         Flag {
             flag: "--audio-format mp3",
-            label: "Audio: MP3",
-            description: "Set audio output format to mp3",
+            label: "Format: MP3",
+            description: "Set audio output format to MP3",
             category: FlagCategory::Audio,
         },
         Flag {
             flag: "--audio-format m4a",
-            label: "Audio: M4A",
-            description: "Set audio output format to m4a",
+            label: "Format: M4A",
+            description: "Set audio output format to M4A",
             category: FlagCategory::Audio,
         },
         Flag {
             flag: "--audio-quality 0",
             label: "Best Audio Quality",
-            description: "Use best audio quality (0 = best)",
+            description: "Use best audio quality (0 = best for VBR encoders)",
             category: FlagCategory::Audio,
         },
         // ── Network ───────────────────────────────────────
@@ -270,44 +236,50 @@ pub fn all_flags() -> Vec<Flag> {
         Flag {
             flag: "--geo-bypass",
             label: "Geo Bypass",
-            description: "Bypass geographic restrictions",
+            description: "Bypass geographic restrictions via fake X-Forwarded-For",
             category: FlagCategory::Network,
         },
         Flag {
             flag: "--proxy socks5://127.0.0.1:1080",
             label: "Use Proxy",
-            description: "Route traffic through local SOCKS5 proxy",
+            description: "Route traffic through local SOCKS5 proxy on port 1080",
             category: FlagCategory::Network,
         },
         // ── Misc ──────────────────────────────────────────
         Flag {
             flag: "--no-overwrites",
             label: "No Overwrites",
-            description: "Skip download if file already exists",
+            description: "Skip download if output file already exists",
             category: FlagCategory::Misc,
         },
         Flag {
             flag: "--continue",
-            label: "Continue Download",
+            label: "Continue",
             description: "Resume partially downloaded files",
             category: FlagCategory::Misc,
         },
         Flag {
             flag: "--no-part",
             label: "No .part Files",
-            description: "Do not use .part files during download",
+            description: "Do not use .part files — write directly to final filename",
             category: FlagCategory::Misc,
         },
         Flag {
             flag: "--verbose",
             label: "Verbose",
-            description: "Print verbose debug output",
+            description: "Print verbose debug output to the log",
             category: FlagCategory::Misc,
         },
         Flag {
             flag: "--restrict-filenames",
             label: "Restrict Filenames",
-            description: "Use only ASCII characters in filenames",
+            description: "Use only ASCII characters in output filenames",
+            category: FlagCategory::Misc,
+        },
+        Flag {
+            flag: "--sponsorblock-remove all",
+            label: "SponsorBlock",
+            description: "Remove sponsored segments using SponsorBlock data",
             category: FlagCategory::Misc,
         },
     ]
