@@ -157,7 +157,12 @@ pub async fn run_download(
     let output_template = format!("{}/%(title)s.%(ext)s", output_dir.trim_end_matches('/'));
 
     // Build args vec
-    let mut args: Vec<String> = vec!["-o".to_string(), output_template];
+    let mut args: Vec<String> = vec![
+        "--remote-components".to_string(),
+        "ejs:github".to_string(), // Allow yt-dlp to download the scripts from GitHub automatically
+        "-o".to_string(),
+        output_template,
+    ];
     for flag in &flags {
         // Each flag may have multiple tokens e.g. "--audio-format mp3"
         for token in flag.flag.split_whitespace() {
@@ -171,8 +176,7 @@ pub async fn run_download(
         .arg("-i")
         .arg("-c")
         .arg("yt-dlp \"$@\"") // $@ expands positional args safely
-        .arg("--remote-components ejs:github") // Allow yt-dlp to download the scripts from GitHub automatically
-        .arg("--") // marks end of shell options, $0 placeholder
+        .arg("bash") // $0 = script name placeholder, NOT in $@
         .args(&args) // each arg passed as its own element, no parsing
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
