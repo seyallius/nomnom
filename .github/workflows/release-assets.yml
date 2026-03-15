@@ -1,5 +1,8 @@
 name: Build & Release Binaries
 
+# Fires when release-plz pushes a version tag (e.g. v0.2.0).
+# Builds native installers on each platform, then attaches them to the
+# GitHub Release that release-plz already created.
 on:
   push:
     tags:
@@ -9,60 +12,128 @@ permissions:
   contents: write
 
 jobs:
-  build-binaries:
-    name: Build binaries for ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
-            artifact_name: treeclip-linux-x86_64
-
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-            artifact_name: treeclip-windows-x86_64.exe
-
-          - target: x86_64-apple-darwin
-            os: macos-latest
-            artifact_name: treeclip-macos-x86_64
+  # ─────────────────────────────────────────────────────────────────────────
+  # Linux — .deb + .AppImage
+  # ─────────────────────────────────────────────────────────────────────────
+  build-linux:
+    name: Linux (.deb + AppImage)
+    runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libxdo-dev
 
       - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
 
-      - run: cargo build --release --target ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
 
-      - name: Package binary
-        shell: bash
-        run: |
-          BIN="target/${{ matrix.target }}/release/treeclip"
-          [[ "${{ matrix.target }}" == *windows* ]] && BIN="$BIN.exe"
+      - name: Install Dioxus CLI
+        run: cargo install dioxus-cli --locked
 
-          if [[ "${{ matrix.target }}" == *windows* ]]; then
-            7z a "${{ matrix.artifact_name }}.zip" "$BIN"
-          else
-            tar czf "${{ matrix.artifact_name }}.tar.gz" -C "$(dirname "$BIN")" "$(basename "$BIN")"
-          fi
+      - name: Bundle
+        run: dx bundle --release
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: ${{ matrix.artifact_name }}.*
+          name: linux-deb
+          path: target/dx/nomnom/release/bundle/deb/*.deb
+          if-no-files-found: error
 
-  create-release:
-    needs: build-binaries
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: target/dx/nomnom/release/bundle/appimage/*.AppImage
+          if-no-files-found: warn
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # macOS — .dmg (arm64; runs on Apple Silicon runner)
+  # ─────────────────────────────────────────────────────────────────────────
+  build-macos:
+    name: macOS (.dmg)
+    runs-on: macos-14
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install Dioxus CLI
+        run: cargo install dioxus-cli --locked
+
+      - name: Bundle
+        run: dx bundle --release --target aarch64-apple-darwin
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: target/dx/nomnom/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Windows — .msi
+  # ─────────────────────────────────────────────────────────────────────────
+  build-windows:
+    name: Windows (.msi)
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install Dioxus CLI
+        run: cargo install dioxus-cli --locked
+
+      - name: Bundle
+        run: dx bundle --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-msi
+          path: target/dx/nomnom/release/bundle/msi/*.msi
+          if-no-files-found: error
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Attach all artefacts to the GitHub Release release-plz already created
+  # ─────────────────────────────────────────────────────────────────────────
+  attach-release-assets:
+    name: Attach to GitHub Release
+    needs: [build-linux, build-macos, build-windows]
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/download-artifact@v4
+        with:
+          path: dist/
+
+      - name: List artefacts
+        run: find dist/ -type f | sort
 
       - uses: softprops/action-gh-release@v2
         with:
+          # release-plz already created the release for this tag;
+          # this step only uploads the binary assets to it.
+          tag_name: ${{ github.ref_name }}
           files: |
-            **/*.tar.gz
-            **/*.zip
-          generate_release_notes: true
+            dist/**/*.deb
+            dist/**/*.AppImage
+            dist/**/*.dmg
+            dist/**/*.msi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
