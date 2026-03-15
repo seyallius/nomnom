@@ -1,0 +1,55 @@
+[application]
+name = "nomnom"
+default_platform = "desktop"
+out_dir = "dist"
+asset_dir = "assets"
+
+[web.app]
+title = "nomnom"
+
+[web.watcher]
+reload_html = true
+watch_path = ["src", "assets"]
+
+[web.resource]
+style = []
+script = []
+
+[web.resource.dev]
+style = []
+script = []
+
+[desktop]
+
+[bundle]
+# crate name on crates.io is "nomnom-app"; the app displayed to users is "nomnom"
+identifier = "com.nomnom.app"
+publisher = "seyallius"
+copyright = "Copyright (c) 2025 nomnom contributors"
+category = "Utility"
+short_description = "A native yt-dlp GUI — gib me URLs"
+long_description = """
+nomnom is a fast, native desktop GUI for yt-dlp.
+Download videos, audio, playlists, and entire channels
+with a single click, complete with metadata, thumbnails, chapters, and subtitles.
+"""
+
+# Icon files — place your icon at these paths inside /assets/
+# Generate all sizes with: dx bundle --release (auto-generates from the 512px source)
+icon = [
+    "assets/icons/32x32.png",
+    "assets/icons/128x128.png",
+    "assets/icons/128x128@2x.png",
+    "assets/icons/icon.icns", # macOS
+    "assets/icons/icon.ico", # Windows
+]
+
+# Minimum OS versions
+[bundle.linux]
+depends = ["yt-dlp"]
+
+[bundle.windows]
+wix = { }    # use default WiX config; set `wix.language` for localization
+
+[bundle.macos]
+minimum_system_version = "10.15"   # Catalina (WebKit2 requirement)
