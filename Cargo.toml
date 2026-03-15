@@ -3,6 +3,14 @@ name = "nomnom"
 description = "YT-DLP GUI Wrapper, but it eats URLs and spits out videos. simple."
 version = "0.1.0"
 edition = "2024"
+authors = ["SeyedAli <seyed.ali.devl@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/seyallius/nomnom"
+repository = "https://github.com/seyallius/nomnom"
+keywords = ["yt-dlp", "youtube", "yt-dlp-gui", "gui", "wrapper"]
+categories = ["download-tool", "downloader"]
+rust-version = "1.88.0"
 
 [dependencies]
 dioxus = { version = "0.7.3", features = ["desktop"] }
