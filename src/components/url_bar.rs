@@ -67,7 +67,7 @@ pub struct UrlBarProps {
 #[component]
 pub fn UrlBar(props: UrlBarProps) -> Element {
     let mut url = props.url;
-    let mut batch_file = props.batch_file;
+    let batch_file = props.batch_file;
     let mut archive_file = props.archive_file;
     let output_dir = props.output_dir;
     let built_command = props.built_command;

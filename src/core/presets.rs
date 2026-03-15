@@ -111,7 +111,7 @@ const AUDIO_BASE: &[&str] = &[
 /// Each preset matches one of the user's real-world yt-dlp command patterns.
 pub fn all_presets() -> Vec<Preset> {
     // ── Video Presets ──────────────────────────────────────────────────────
-    let mut single_video_flags = VIDEO_BASE.to_vec();
+    let single_video_flags = VIDEO_BASE.to_vec();
     let single_video = Preset {
         id: "single_video",
         label: "Single Video",

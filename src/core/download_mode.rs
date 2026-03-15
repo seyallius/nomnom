@@ -84,6 +84,7 @@ impl DownloadSource {
     }
 
     /// Returns `true` when this source uses a typed/pasted URL (not a batch file path).
+    #[allow(dead_code)]
     pub fn needs_url(&self) -> bool {
         !matches!(self, DownloadSource::Batch)
     }
