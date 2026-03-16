@@ -37,10 +37,32 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Install Dioxus CLI
-        run: |
-          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-          cargo binstall dioxus-cli --no-confirm --locked
+      - name: Cache cargo-binstall
+        uses: actions/cache@v4
+        id: cache-binstall
+        with:
+          path: |
+            ~/.cargo/bin/cargo-binstall
+            ~/.cargo/bin/binstall
+          key: ${{ runner.os }}-cargo-binstall-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install cargo-binstall
+        if: steps.cache-binstall.outputs.cache-hit != 'true'
+        run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+
+      - name: Cache dioxus-cli
+        uses: actions/cache@v4
+        id: cache-dioxus
+        with:
+          path: |
+            ~/.cargo/bin/dx
+            ~/.cargo/bin/dioxus
+            ~/.cargo/bin/dioxus-cli
+          key: ${{ runner.os }}-dioxus-cli-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install dioxus-cli
+        if: steps.cache-dioxus.outputs.cache-hit != 'true'
+        run: cargo binstall dioxus-cli --no-confirm --locked
 
       - name: Bundle
         run: dx bundle --release
@@ -82,10 +104,32 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Install Dioxus CLI
-        run: |
-          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-          cargo binstall dioxus-cli --no-confirm --locked
+      - name: Cache cargo-binstall
+        uses: actions/cache@v4
+        id: cache-binstall
+        with:
+          path: |
+            ~/.cargo/bin/cargo-binstall
+            ~/.cargo/bin/binstall
+          key: ${{ runner.os }}-cargo-binstall-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install cargo-binstall
+        if: steps.cache-binstall.outputs.cache-hit != 'true'
+        run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+
+      - name: Cache dioxus-cli
+        uses: actions/cache@v4
+        id: cache-dioxus
+        with:
+          path: |
+            ~/.cargo/bin/dx
+            ~/.cargo/bin/dioxus
+            ~/.cargo/bin/dioxus-cli
+          key: ${{ runner.os }}-dioxus-cli-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install dioxus-cli
+        if: steps.cache-dioxus.outputs.cache-hit != 'true'
+        run: cargo binstall dioxus-cli --no-confirm --locked
 
       - name: Bundle
         run: dx bundle --release
@@ -111,11 +155,34 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Install Dioxus CLI
+      - name: Cache cargo-binstall
+        uses: actions/cache@v4
+        id: cache-binstall
+        with:
+          path: |
+            ~\.cargo\bin\cargo-binstall.exe
+            ~\.cargo\bin\binstall.exe
+          key: ${{ runner.os }}-cargo-binstall-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install cargo-binstall
+        if: steps.cache-binstall.outputs.cache-hit != 'true'
         shell: bash
-        run: |
-          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-          cargo binstall dioxus-cli --no-confirm --locked
+        run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+
+      - name: Cache dioxus-cli
+        uses: actions/cache@v4
+        id: cache-dioxus
+        with:
+          path: |
+            ~\.cargo\bin\dx.exe
+            ~\.cargo\bin\dioxus.exe
+            ~\.cargo\bin\dioxus-cli.exe
+          key: ${{ runner.os }}-dioxus-cli-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install dioxus-cli
+        if: steps.cache-dioxus.outputs.cache-hit != 'true'
+        shell: bash
+        run: cargo binstall dioxus-cli --no-confirm --locked
 
       - name: Bundle
         run: dx bundle --release
@@ -140,7 +207,7 @@ jobs:
         with:
           path: dist/
 
-      - name: List artefacts
+      - name: List artifacts
         run: find dist/ -type f | sort
 
       - uses: softprops/action-gh-release@v2
