@@ -23,6 +23,7 @@ script = []
 
 [bundle]
 # crate name on crates.io is "nomnom-app"; the app displayed to users is "nomnom"
+name = "nomnom"
 identifier = "com.nomnom.app"
 publisher = "seyallius"
 copyright = "Copyright (c) 2025 nomnom contributors"
