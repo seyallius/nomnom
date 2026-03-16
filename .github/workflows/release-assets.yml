@@ -38,7 +38,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Install Dioxus CLI
-        run: cargo install dioxus-cli --locked
+        run: |
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          cargo binstall dioxus-cli --no-confirm --locked
 
       - name: Bundle
         run: dx bundle --release
@@ -72,10 +74,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Install Dioxus CLI
-        run: cargo install dioxus-cli --locked
+        run: |
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          cargo binstall dioxus-cli --no-confirm --locked
 
       - name: Bundle
-        run: dx bundle --release --target aarch64-apple-darwin
+        run: dx bundle --release
 
       - uses: actions/upload-artifact@v4
         with:
@@ -98,7 +102,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Install Dioxus CLI
-        run: cargo install dioxus-cli --locked
+        shell: bash
+        run: |
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          cargo binstall dioxus-cli --no-confirm --locked
 
       - name: Bundle
         run: dx bundle --release

@@ -26,6 +26,12 @@ vendor/
 # OS files
 .DS_Store
 Thumbs.db
+Cargo.lock
+CHANGELOG.md
+LICENSE
+justfile
+assets
+.gitignore
 
 # ==================== Imported Patterns ====================
 
@@ -36,3 +42,6 @@ target
 *.pdb
 **/mutants.out*/
 /target
+***.idea
+***.git
+dist
