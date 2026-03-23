@@ -234,11 +234,21 @@ pub fn default_preset() -> Preset {
 /// # Arguments
 ///
 /// * `preset` — The preset whose flags should be resolved.
+#[rustfmt::skip]
 pub fn resolve_preset_flags(preset: &Preset) -> Vec<Flag> {
     let all = all_flags();
+    // #[rustfmt::skip]
     preset
         .flag_keys
         .iter()
-        .filter_map(|key| all.iter().find(|f| f.flag == *key).cloned())
+        .filter_map(|key| {
+            let key = *key;
+            all
+                .iter()
+                .find(|f| {
+                    f.flag == key
+                })
+                .cloned()
+        })
         .collect()
 }

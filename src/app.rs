@@ -71,27 +71,14 @@ use std::sync::{Arc, Mutex};
 #[component]
 pub fn App() -> Element {
     // ── Download configuration state ─────────────────────────────────────
-
-    // Whether to download video or extract audio.
-    let download_type: Signal<DownloadType> = use_signal(DownloadType::default);
-
-    // URL source + output folder organization strategy.
-    let download_source: Signal<DownloadSource> = use_signal(DownloadSource::default);
-
-    // Video resolution cap.
-    let quality: Signal<Quality> = use_signal(Quality::default);
+    let download_type: Signal<DownloadType> = use_signal(DownloadType::default); // Whether to download video or extract audio.
+    let download_source: Signal<DownloadSource> = use_signal(DownloadSource::default); // URL source + output folder organization strategy.
+    let quality: Signal<Quality> = use_signal(Quality::default); // Video resolution cap.
 
     // ── Input state ───────────────────────────────────────────────────────
-
-    // The URL the user wants to download.
-    let url = use_signal::<String>(String::new);
-
-    // Path to a batch text file (one URL per line).
-    let batch_file = use_signal::<String>(String::new);
-
-    // Path to a yt-dlp download archive file (optional; empty = disabled).
-    let archive_file = use_signal::<String>(String::new);
-
+    let url = use_signal::<String>(String::new); // The URL the user wants to download.
+    let batch_file = use_signal::<String>(String::new); // Path to a batch text file (one URL per line).
+    let archive_file = use_signal::<String>(String::new); // Path to a yt-dlp download archive file (optional; empty = disabled).
     // Output directory for all downloaded files.
     let output_dir = use_signal(|| {
         dirs::download_dir()
@@ -101,29 +88,17 @@ pub fn App() -> Element {
     });
 
     // ── Preset + flag state ───────────────────────────────────────────────
-
     let initial_preset = default_preset();
     let initial_flags = resolve_preset_flags(&initial_preset);
-
-    // Currently active flags — populated by preset or manual toggle.
-    let active_flags: Signal<Vec<Flag>> = use_signal(|| initial_flags);
-
-    // Currently active preset. `None` = Custom mode.
-    let active_preset: Signal<Option<Preset>> = use_signal(|| Some(initial_preset));
+    let active_flags: Signal<Vec<Flag>> = use_signal(|| initial_flags); // Currently active flags — populated by preset or manual toggle.
+    let active_preset: Signal<Option<Preset>> = use_signal(|| Some(initial_preset)); // Currently active preset. `None` = Custom mode.
 
     // ── Runtime state ─────────────────────────────────────────────────────
-
-    // Lines captured from yt-dlp stdout/stderr — streamed to the log panel.
-    let log_lines: Signal<Vec<String>> = use_signal(Vec::new);
-
-    // Whether a download is currently in progress.
-    let is_running = use_signal(|| false);
-
-    // Shared handle to the active child process for cancellation.
-    let child_handle: Signal<ChildHandle> = use_signal(|| Arc::new(Mutex::new(None)));
+    let log_lines: Signal<Vec<String>> = use_signal(Vec::new); // Lines captured from yt-dlp stdout/stderr — streamed to the log panel.
+    let is_running = use_signal(|| false); // Whether a download is currently in progress.
+    let child_handle: Signal<ChildHandle> = use_signal(|| Arc::new(Mutex::new(None))); // Shared handle to the active child process for cancellation.
 
     // ── Derived state ─────────────────────────────────────────────────────
-
     // Memoised command preview — recomputed whenever any input signal changes.
     let built_command = use_memo(move || {
         runner::build_command_string(&runner::DownloadRequest {
