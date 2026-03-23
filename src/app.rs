@@ -101,7 +101,7 @@ pub fn App() -> Element {
     // ── Derived state ─────────────────────────────────────────────────────
     // Memoised command preview — recomputed whenever any input signal changes.
     let built_command = use_memo(move || {
-        runner::build_command_string(&runner::DownloadRequest {
+        runner::build_command_string(&mut runner::DownloadRequest {
             url: url.read().clone(),
             batch_file: batch_file.read().clone(),
             archive_file: archive_file.read().clone(),

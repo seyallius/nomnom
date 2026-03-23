@@ -105,10 +105,10 @@ pub struct DownloadRequest {
 /// ```
 ///
 /// Returns a placeholder if no URL or batch file is specified.
-pub fn build_command_string(req: &DownloadRequest) -> String {
+pub fn build_command_string(req: &mut DownloadRequest) -> String {
     let has_input = !req.url.trim().is_empty() || !req.batch_file.trim().is_empty();
     if !has_input {
-        return "yt-dlp [paste a URL or pick a batch file above]".to_string();
+        req.url = String::from("<paste_a_URL_or_pick_a_batch_file_above>");
     }
 
     let exec_args = build_exec_args(req);
@@ -171,7 +171,7 @@ pub fn cancel_download(
 /// * `is_running`   — Signal tracking running state.
 /// * `child_handle` — Shared slot to store the child process for cancellation.
 pub async fn run_download(
-    req: DownloadRequest,
+    mut req: DownloadRequest,
     mut log_lines: Signal<Vec<String>>,
     mut is_running: Signal<bool>,
     child_handle: ChildHandle,
@@ -194,7 +194,7 @@ pub async fn run_download(
     log_lines.write().push("▶ Starting download…".to_string());
     log_lines
         .write()
-        .push(format!("  {}", build_command_string(&req)));
+        .push(format!("  {}", build_command_string(&mut req)));
 
     let args = build_exec_args(&req);
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
