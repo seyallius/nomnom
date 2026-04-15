@@ -18,7 +18,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────
   build-linux:
     name: Linux (.deb + AppImage)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v4
@@ -149,7 +149,7 @@ jobs:
       - name: List bundle output directory
         run: |
           echo "=== Bundle output structure ==="
-          find target/dx -type f -name "*.dmg" 2>/dev/null | head -20
+          find /Users/runner/work/nomnom/nomnom/dist -type f -name "*.dmg" 2>/dev/null | head -20
           echo "==============================="
 
       - name: Upload .dmg package
@@ -157,7 +157,7 @@ jobs:
         with:
           name: macos-dmg
           #          path: dist/*.dmg
-          path: target/dx/nomnom/bundle/macos/bundle/dmg/*.dmg
+          path: /Users/runner/work/nomnom/nomnom/dist/*.dmg
           if-no-files-found: warn
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -209,7 +209,7 @@ jobs:
       - name: List bundle output directory
         run: |
           echo "=== Bundle output structure ==="
-          find target/dx -type f -name "*.msi" 2>/dev/null | head -20
+          find D:\a\nomnom\nomnom\dist -type f -name "*.msi"
           echo "==============================="
 
       - name: Upload .msi package
@@ -217,7 +217,7 @@ jobs:
         with:
           name: windows-msi
           #          path: dist/*.msi
-          path: target/dx/nomnom/bundle/windows/bundle/msi/*.msi
+          path: D:\a\nomnom\nomnom\dist\*.msi
           if-no-files-found: error
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -247,8 +247,8 @@ jobs:
             dist/linux-deb/*.deb
             dist/linux-appimage/*.AppImage
             dist/linux-rpm/*.rpm
-            dist/macos-dmg/*.dmg
-            dist/windows-msi/*.msi
+            /Users/runner/work/nomnom/nomnom/dist/*.dmg
+            D:\a\nomnom\nomnom\dist\*.msi
         #            dist/**/*.deb
         #            dist/**/*.AppImage
         #            dist/**/*.dmg
