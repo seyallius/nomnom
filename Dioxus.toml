@@ -34,6 +34,7 @@ nomnom is a fast, native desktop GUI for yt-dlp.
 Download videos, audio, playlists, and entire channels
 with a single click, complete with metadata, thumbnails, chapters, and subtitles.
 """
+targets = ["deb", "appimage", "msi", "dmg"]
 
 # Icon files — place your icon at these paths inside /assets/
 # Generate all sizes with: dx bundle --release (auto-generates from the 512px source)
@@ -48,6 +49,9 @@ icon = [
 # Minimum OS versions
 [bundle.linux]
 depends = ["yt-dlp"]
+deb = { }
+appimage = { }
+rpm = { }
 
 [bundle.windows]
 wix = { }    # use default WiX config; set `wix.language` for localization

@@ -69,28 +69,28 @@ jobs:
         run: cargo binstall dioxus-cli --no-confirm --locked
 
       - name: Bundle
-        run: dx bundle --release
+        run: dx bundle --release --package-types deb --package-types appimage --package-types rpm
 
-      - name: List bundle output directory
+      - name: List dist/ contents
         run: |
-          echo "=== Bundle output structure ==="
-          find target/dx -type f -name "*.deb" -o -name "*.AppImage" 2>/dev/null | head -20
-          echo "==============================="
+          echo "=== dist/ contents ==="
+          ls -la dist/ || echo "dist/ doesn't exist"
+          find dist/ -type f 2>/dev/null || echo "No files in dist/"
+          echo "=== target/dx fallback search ==="
+          find target/dx -type f \( -name "*.deb" -o -name "*.AppImage" \) 2>/dev/null || echo "No bundles in target/dx"
 
       - name: Upload .deb package
         uses: actions/upload-artifact@v4
         with:
           name: linux-deb
-          #          path: dist/*.deb
-          path: target/dx/nomnom/bundle/linux/bundle/deb/*.deb
+          path: dist/*.deb
           if-no-files-found: error
 
       - name: Upload AppImage
         uses: actions/upload-artifact@v4
         with:
           name: linux-appimage
-          #          path: dist/*.AppImage
-          path: target/dx/nomnom/bundle/linux/bundle/appimage/*.AppImage
+          path: dist/*.AppImage
           if-no-files-found: warn
 
       - name: Upload .rpm (if needed)
@@ -144,20 +144,21 @@ jobs:
         run: cargo binstall dioxus-cli --no-confirm --locked
 
       - name: Bundle
-        run: dx bundle --release
+        run: dx bundle --release --package-types dmg
 
-      - name: List bundle output directory
+      - name: List dist/ contents
         run: |
-          echo "=== Bundle output structure ==="
-          find /Users/runner/work/nomnom/nomnom/dist -type f -name "*.dmg" 2>/dev/null | head -20
-          echo "==============================="
+          echo "=== dist/ contents ==="
+          ls -la dist/ || echo "dist/ doesn't exist"
+          find dist/ -type f -name "*.dmg" 2>/dev/null || echo "No .dmg in dist/"
+          echo "=== target/dx fallback ==="
+          find target/dx -name "*.dmg" 2>/dev/null || echo "No .dmg in target/dx"
 
       - name: Upload .dmg package
         uses: actions/upload-artifact@v4
         with:
           name: macos-dmg
-          #          path: dist/*.dmg
-          path: /Users/runner/work/nomnom/nomnom/dist/*.dmg
+          path: dist/*.dmg
           if-no-files-found: warn
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -206,18 +207,20 @@ jobs:
       - name: Bundle
         run: dx bundle --release
 
-      - name: List bundle output directory
+      - name: List dist/ contents
+        shell: bash
         run: |
-          echo "=== Bundle output structure ==="
-          find D:\a\nomnom\nomnom\dist -type f -name "*.msi"
-          echo "==============================="
+          echo "=== dist/ contents ==="
+          ls -la dist/ || echo "dist/ doesn't exist"
+          find dist/ -iname "*.msi" 2>/dev/null || echo "No .msi in dist/"
+          echo "=== target/dx fallback ==="
+          find target/dx -iname "*.msi" 2>/dev/null || echo "No .msi in target/dx"
 
       - name: Upload .msi package
         uses: actions/upload-artifact@v4
         with:
           name: windows-msi
-          #          path: dist/*.msi
-          path: D:\a\nomnom\nomnom\dist\*.msi
+          path: dist/*.msi
           if-no-files-found: error
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -231,12 +234,12 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          path: dist/
+          path: artifacts/
 
-      - name: List artifacts
+      - name: Show downloaded artifacts
         run: |
-          ls -la dist/
-          find dist/ -type f | sort
+          echo "=== Downloaded artifacts ==="
+          find artifacts/ -type f | sort
 
       - uses: softprops/action-gh-release@v2
         with:
@@ -244,15 +247,9 @@ jobs:
           # this step only uploads the binary assets to it.
           tag_name: ${{ github.ref_name }}
           files: |
-            dist/linux-deb/*.deb
-            dist/linux-appimage/*.AppImage
-            dist/linux-rpm/*.rpm
-            /Users/runner/work/nomnom/nomnom/dist/*.dmg
-            D:\a\nomnom\nomnom\dist\*.msi
-        #            dist/**/*.deb
-        #            dist/**/*.AppImage
-        #            dist/**/*.dmg
-        #            dist/**/*.msi
-        #            dist/**/*.rpm
+            artifacts/linux-deb/*.deb
+            artifacts/linux-appimage/*.AppImage
+            artifacts/macos-dmg/*.dmg
+            artifacts/windows-msi/*.msi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
