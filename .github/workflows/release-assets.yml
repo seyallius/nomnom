@@ -179,7 +179,7 @@ jobs:
         run: choco install wixtoolset -y --no-progress
 
       - name: Verify WiX
-        run: wix.exe --version
+        run: wix --version
 
       - name: Cache cargo-binstall
         uses: actions/cache@v4
