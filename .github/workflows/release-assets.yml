@@ -179,7 +179,7 @@ jobs:
         run: choco install wixtoolset -y --no-progress
 
       - name: Verify WiX
-        run: wix.exe --version
+        run: wix --version
 
       - name: Cache cargo-binstall
         uses: actions/cache@v4
@@ -236,6 +236,7 @@ jobs:
     name: Attach to GitHub Release
     needs: [ build-linux, build-macos, build-windows ]
     runs-on: ubuntu-latest
+    if: always() # Run even if some jobs failed
 
     steps:
       - uses: actions/download-artifact@v4
