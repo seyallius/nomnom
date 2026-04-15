@@ -32,7 +32,10 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev \
             patchelf \
-            libxdo-dev
+            libxdo-dev \
+            fuse \
+            desktop-file-utils \
+            libgdk-pixbuf2.0-dev
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -68,18 +71,26 @@ jobs:
       - name: Bundle
         run: dx bundle --release
 
+      - name: List bundle output directory
+        run: |
+          echo "=== Bundle output structure ==="
+          find target/dx -type f -name "*.deb" -o -name "*.AppImage" 2>/dev/null | head -20
+          echo "==============================="
+
       - name: Upload .deb package
         uses: actions/upload-artifact@v4
         with:
           name: linux-deb
-          path: dist/*.deb
+#          path: dist/*.deb
+          path: target/dx/nomnom/bundle/linux/bundle/deb/*.deb
           if-no-files-found: error
 
       - name: Upload AppImage
         uses: actions/upload-artifact@v4
         with:
           name: linux-appimage
-          path: dist/*.AppImage
+#          path: dist/*.AppImage
+          path: target/dx/nomnom/bundle/linux/bundle/appimage/*.AppImage
           if-no-files-found: warn
 
       - name: Upload .rpm (if needed)
@@ -135,11 +146,18 @@ jobs:
       - name: Bundle
         run: dx bundle --release
 
+      - name: List bundle output directory
+        run: |
+          echo "=== Bundle output structure ==="
+          find target/dx -type f -name "*.dmg" 2>/dev/null | head -20
+          echo "==============================="
+
       - name: Upload .dmg package
         uses: actions/upload-artifact@v4
         with:
           name: macos-dmg
-          path: dist/*.dmg
+#          path: dist/*.dmg
+          path: target/dx/nomnom/bundle/macos/bundle/dmg/*.dmg
           if-no-files-found: warn
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -188,11 +206,18 @@ jobs:
       - name: Bundle
         run: dx bundle --release
 
+      - name: List bundle output directory
+        run: |
+          echo "=== Bundle output structure ==="
+          find target/dx -type f -name "*.msi" 2>/dev/null | head -20
+          echo "==============================="
+
       - name: Upload .msi package
         uses: actions/upload-artifact@v4
         with:
           name: windows-msi
-          path: dist/*.msi
+#          path: dist/*.msi
+          path: target/dx/nomnom/bundle/windows/bundle/msi/*.msi
           if-no-files-found: error
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -217,10 +242,15 @@ jobs:
           # this step only uploads the binary assets to it.
           tag_name: ${{ github.ref_name }}
           files: |
-            dist/**/*.deb
-            dist/**/*.AppImage
-            dist/**/*.dmg
-            dist/**/*.msi
-            dist/**/*.rpm
+#            dist/**/*.deb
+#            dist/**/*.AppImage
+#            dist/**/*.dmg
+#            dist/**/*.msi
+#            dist/**/*.rpm
+            target/dx/nomnom/bundle/**/bundle/**/*.deb
+            target/dx/nomnom/bundle/**/bundle/**/*.AppImage
+            target/dx/nomnom/bundle/**/bundle/**/*.dmg
+            target/dx/nomnom/bundle/**/bundle/**/*.msi
+            target/dx/nomnom/bundle/**/bundle/**/*.rpm
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
