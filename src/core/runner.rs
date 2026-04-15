@@ -117,19 +117,21 @@ pub fn build_command_string(req: &mut DownloadRequest) -> String {
 
     let exec_args = build_exec_args(req);
 
-    // Quote any arg that contains a space, bracket, or percent sign for display.
-    let display: Vec<String> = exec_args
-        .iter()
-        .map(|a| {
-            if a.contains(' ') || a.contains('[') || a.contains('%') || a.contains('>') {
-                format!("\"{}\"", a)
-            } else {
-                a.clone()
-            }
-        })
-        .collect();
+    let mut parts = Vec::new();
+    parts.push("yt-dlp".to_string());
 
-    format!("yt-dlp {}", display.join(" "))
+    for arg in exec_args {
+        // Quote only if it's a value (doesn't start with '-'), or contains a space/quote.
+        if !arg.starts_with('-') || arg.contains(' ') || arg.contains('"') {
+            // Always quote every argument for consistent, unambiguous preview output.
+            // Rust's {:?} adds surrounding double-quotes and escapes any inner quotes.
+            parts.push(format!("{:?}", arg));
+        } else {
+            parts.push(arg);
+        }
+    }
+
+    parts.join(" ")
 }
 
 /// Kills the active child process stored in the handle.
