@@ -6,14 +6,15 @@
 //!
 //! # Components
 //!
-//! | Module            | Component        | Purpose                                    |
-//! |-------------------|------------------|--------------------------------------------|
-//! | [`flag_panel`]    | `FlagPanel`      | Toggle buttons for individual yt-dlp flags |
-//! | [`mode_selector`] | `ModeSelector`   | Type / source / quality pill selectors     |
-//! | [`output_log`]    | `OutputLog`      | Scrollable color-coded log output         |
-//! | [`preset_panel`]  | `PresetPanel`    | Clickable preset cards (video + audio)     |
-//! | [`terminal_panel`]| `TerminalPanel`  | Raw command input for power users          |
-//! | [`url_bar`]       | `UrlBar`         | URL/batch input, folder picker, download   |
+//! | Module                        | Component                 | Purpose                                                   |
+//! |-------------------            |------------------         |--------------------------------------------               |
+//! | [`flag_panel`]                | `FlagPanel`               | Toggle buttons for individual yt-dlp flags                |
+//! | [`mode_selector`]             | `ModeSelector`            | Type / source / quality pill selectors                    |
+//! | [`output_log`]                | `OutputLog`               | Scrollable color-coded log output                         |
+//! | [`output_preset_selector`]    | `OutputPresetSelector`    | Dropdown + Custom template input for output path presets  |
+//! | [`preset_panel`]              | `PresetPanel`             | Clickable preset cards (video + audio)                    |
+//! | [`terminal_panel`]            | `TerminalPanel`           | Raw command input for power users                         |
+//! | [`url_bar`]                   | `UrlBar`                  | URL/batch input, folder picker, download                  |
 //!
 //! # Props Pattern
 //!
@@ -25,6 +26,7 @@
 pub mod flag_panel;
 pub mod mode_selector;
 pub mod output_log;
+pub mod output_preset_selector;
 pub mod preset_panel;
 pub mod terminal_panel;
 pub mod url_bar;

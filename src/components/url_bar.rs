@@ -18,6 +18,7 @@
 use crate::core::{
     download_mode::{DownloadSource, DownloadType, Quality},
     flags::Flag,
+    presets::OutputPreset,
     runner::{self, ChildHandle, DownloadRequest},
 };
 use dioxus::prelude::*;
@@ -51,6 +52,8 @@ pub struct UrlBarProps {
     pub is_running: Signal<bool>,
     /// Shared child process handle for cancellation.
     pub child_handle: Signal<ChildHandle>,
+
+    pub output_preset: Signal<OutputPreset>,
 }
 
 // -------------------------------------------- Public API --------------------------------------------
@@ -78,6 +81,7 @@ pub fn UrlBar(props: UrlBarProps) -> Element {
     let download_type = props.download_type;
     let download_source = props.download_source;
     let quality = props.quality;
+    let output_preset = props.output_preset;
 
     let is_batch = *download_source.read() == DownloadSource::Batch;
 
@@ -134,6 +138,7 @@ pub fn UrlBar(props: UrlBarProps) -> Element {
             quality: quality.read().clone(),
             output_dir: output_dir.read().clone(),
             extra_flags: active_flags.read().clone(),
+            output_preset: output_preset.read().clone(),
         };
 
         let log = log_lines;

@@ -37,12 +37,13 @@
 use crate::{
     components::{
         flag_panel::FlagPanel, mode_selector::ModeSelector, output_log::OutputLog,
-        preset_panel::PresetPanel, terminal_panel::TerminalPanel, url_bar::UrlBar,
+        output_preset_selector::OutputPresetSelector, preset_panel::PresetPanel,
+        terminal_panel::TerminalPanel, url_bar::UrlBar,
     },
     core::{
         download_mode::{DownloadSource, DownloadType, Quality},
         flags::Flag,
-        presets::{default_preset, resolve_preset_flags, Preset},
+        presets::{default_preset, resolve_preset_flags, OutputPreset, Preset},
         runner::{self, ChildHandle},
     },
 };
@@ -92,6 +93,7 @@ pub fn App() -> Element {
     let initial_flags = resolve_preset_flags(&initial_preset);
     let active_flags: Signal<Vec<Flag>> = use_signal(|| initial_flags); // Currently active flags — populated by preset or manual toggle.
     let active_preset: Signal<Option<Preset>> = use_signal(|| Some(initial_preset)); // Currently active preset. `None` = Custom mode.
+    let output_preset: Signal<OutputPreset> = use_signal(OutputPreset::default);
 
     // ── Runtime state ─────────────────────────────────────────────────────
     let log_lines: Signal<Vec<String>> = use_signal(Vec::new); // Lines captured from yt-dlp stdout/stderr — streamed to the log panel.
@@ -110,6 +112,7 @@ pub fn App() -> Element {
             quality: quality.read().clone(),
             output_dir: output_dir.read().clone(),
             extra_flags: active_flags.read().clone(),
+            output_preset: output_preset.read().clone(),
         })
     });
 
@@ -218,6 +221,11 @@ pub fn App() -> Element {
                     }
 
                     FlagPanel { active_flags }
+
+                    OutputPresetSelector {
+                        output_preset,
+                        output_dir,
+                    }
                 }
 
                 // ── Right content area ────────────────────────────────────
@@ -251,6 +259,7 @@ pub fn App() -> Element {
                         log_lines,
                         is_running,
                         child_handle,
+                        output_preset,
                     }
 
                     TerminalPanel {

@@ -76,6 +76,30 @@ pub struct Preset {
     pub flag_keys: Vec<&'static str>,
 }
 
+/// Describes how downloaded files are organized on disk.
+///
+/// Each variant encodes a yt-dlp `-o` template pattern.
+/// `Auto` defers to the per-source default in [`DownloadSource::output_template`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum OutputPreset {
+    /// Use the default template for the current [`DownloadSource`].
+    #[default]
+    Auto,
+    /// Flat: all files land directly in the output dir, no sub-folders.
+    /// `BASE/%(title)s - [%(uploader)s - %(upload_date>%b %d %Y)s].%(ext)s`
+    Flat,
+    /// Organised by uploader: `BASE/@uploader/title.ext`
+    ByUploader,
+    /// Organised by year: `BASE/YYYY/title.ext`
+    ByYear,
+    /// Playlist tree: `BASE/Playlists/@uploader/playlist/NNN - title.ext`
+    PlaylistTree,
+    /// Channel tree: `BASE/Channels/@uploader/title.ext`
+    ChannelTree,
+    /// User-supplied raw template string (advanced mode).
+    Custom(String),
+}
+
 // -------------------------------------------- Private Constants --------------------------------------------
 
 /// Base flags shared by all video download presets.
@@ -251,4 +275,76 @@ pub fn resolve_preset_flags(preset: &Preset) -> Vec<Flag> {
                 .cloned()
         })
         .collect()
+}
+
+impl OutputPreset {
+    /// Human-readable label for the UI dropdown.
+    pub fn label(&self) -> &str {
+        match self {
+            OutputPreset::Auto => "Auto (source default)",
+            OutputPreset::Flat => "Flat — no sub-folders",
+            OutputPreset::ByUploader => "By Uploader",
+            OutputPreset::ByYear => "By Year",
+            OutputPreset::PlaylistTree => "Playlist Tree",
+            OutputPreset::ChannelTree => "Channel Tree",
+            OutputPreset::Custom(_) => "Custom Template",
+        }
+    }
+
+    /// Emoji icon for compact display.
+    pub fn icon(&self) -> &str {
+        match self {
+            OutputPreset::Auto => "🔄",
+            OutputPreset::Flat => "📁",
+            OutputPreset::ByUploader => "👤",
+            OutputPreset::ByYear => "📅",
+            OutputPreset::PlaylistTree => "📋",
+            OutputPreset::ChannelTree => "📺",
+            OutputPreset::Custom(_) => "✏️",
+        }
+    }
+
+    /// Builds the full yt-dlp `-o` template string for this preset.
+    ///
+    /// Returns `None` for [`OutputPreset::Auto`] — caller should fall back
+    /// to [`DownloadSource::output_template`].
+    pub fn build_template(&self, base_dir: &str) -> Option<String> {
+        let dir = base_dir.trim_end_matches('/');
+        match self {
+            OutputPreset::Auto => None,
+            OutputPreset::Flat => Some(format!(
+                "{}/%(title)s - [%(uploader)s - %(upload_date>%b %d %Y)s].%(ext)s",
+                dir
+            )),
+            OutputPreset::ByUploader => Some(format!(
+                "{}/%(uploader)s/%(title)s - [%(upload_date>%b %d %Y)s].%(ext)s",
+                dir
+            )),
+            OutputPreset::ByYear => Some(format!(
+                "{}/%(upload_date>%Y)s/%(title)s - [%(uploader)s].%(ext)s",
+                dir
+            )),
+            OutputPreset::PlaylistTree => Some(format!(
+                "{}/Playlists/@%(uploader)s/%(playlist_title)s/%(playlist_index)03d - %(title)s - [%(upload_date>%b %d %Y)s].%(ext)s",
+                dir
+            )),
+            OutputPreset::ChannelTree => Some(format!(
+                "{}/Channels/@%(uploader)s/%(title)s - [%(upload_date>%b %d %Y)s].%(ext)s",
+                dir
+            )),
+            OutputPreset::Custom(tpl) => Some(tpl.clone()),
+        }
+    }
+
+    /// All selectable presets for the UI (excludes `Custom` — it's entered manually).
+    pub fn all() -> Vec<OutputPreset> {
+        vec![
+            OutputPreset::Auto,
+            OutputPreset::Flat,
+            OutputPreset::ByUploader,
+            OutputPreset::ByYear,
+            OutputPreset::PlaylistTree,
+            OutputPreset::ChannelTree,
+        ]
+    }
 }

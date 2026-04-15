@@ -25,6 +25,7 @@
 use crate::core::{
     download_mode::{DownloadSource, DownloadType, Quality},
     flags::Flag,
+    presets::OutputPreset,
 };
 use dioxus::prelude::*;
 use std::{
@@ -82,6 +83,9 @@ pub struct DownloadRequest {
     pub output_dir: String,
     /// Additional flags toggled by the user in the flag panel.
     pub extra_flags: Vec<Flag>,
+    /// Controls how output files are organized on disk.
+    /// [`OutputPreset::Auto`] defers to the source-default template.
+    pub output_preset: OutputPreset,
 }
 
 // -------------------------------------------- Public API --------------------------------------------
@@ -380,7 +384,11 @@ fn build_exec_args(req: &DownloadRequest) -> Vec<String> {
     }
 
     // ── 2. Output template ────────────────────────────────────────────────
-    let template = req.download_source.output_template(&req.output_dir);
+    // OutputPreset::Auto falls back to the per-source default.
+    let template = req
+        .output_preset
+        .build_template(&req.output_dir)
+        .unwrap_or_else(|| req.download_source.output_template(&req.output_dir));
     args.push("-o".to_string());
     args.push(template); // passed as a single arg — no quoting needed
 
