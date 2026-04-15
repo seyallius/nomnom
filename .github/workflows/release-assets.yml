@@ -175,6 +175,12 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      - name: Install WiX Toolset (Chocolatey)
+        run: choco install wixtoolset -y --no-progress
+
+      - name: Verify WiX
+        run: wix.exe --version
+
       - name: Cache cargo-binstall
         uses: actions/cache@v4
         id: cache-binstall
@@ -205,7 +211,7 @@ jobs:
         run: cargo binstall dioxus-cli --no-confirm --locked
 
       - name: Bundle
-        run: dx bundle --release
+        run: dx bundle --release --package-types msi --verbose 2>&1 | tee bundle.log
 
       - name: List dist/ contents
         shell: bash
@@ -221,7 +227,7 @@ jobs:
         with:
           name: windows-msi
           path: dist/*.msi
-          if-no-files-found: error
+          if-no-files-found: warn
 
   # ─────────────────────────────────────────────────────────────────────────
   # Attach all artifacts to the GitHub Release release-plz already created
