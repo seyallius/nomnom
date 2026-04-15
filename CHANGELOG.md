@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3](https://github.com/seyallius/nomnom/compare/v0.1.2...v0.1.3) - 2026-04-15
+
+### Added
+
+- *(output-presets)* add smart output directory preset selector
+
+### Fixed
+
+- *(runner)* always quote non-flag args in command preview for consistent output
+
 ## [0.1.2](https://github.com/seyallius/nomnom/compare/v0.1.1...v0.1.2) - 2026-04-13
 
 ### Fixed
