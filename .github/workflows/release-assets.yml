@@ -81,7 +81,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-deb
-#          path: dist/*.deb
+          #          path: dist/*.deb
           path: target/dx/nomnom/bundle/linux/bundle/deb/*.deb
           if-no-files-found: error
 
@@ -89,7 +89,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-appimage
-#          path: dist/*.AppImage
+          #          path: dist/*.AppImage
           path: target/dx/nomnom/bundle/linux/bundle/appimage/*.AppImage
           if-no-files-found: warn
 
@@ -156,7 +156,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: macos-dmg
-#          path: dist/*.dmg
+          #          path: dist/*.dmg
           path: target/dx/nomnom/bundle/macos/bundle/dmg/*.dmg
           if-no-files-found: warn
 
@@ -216,7 +216,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-msi
-#          path: dist/*.msi
+          #          path: dist/*.msi
           path: target/dx/nomnom/bundle/windows/bundle/msi/*.msi
           if-no-files-found: error
 
@@ -225,7 +225,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────
   attach-release-assets:
     name: Attach to GitHub Release
-    needs: [build-linux, build-macos, build-windows]
+    needs: [ build-linux, build-macos, build-windows ]
     runs-on: ubuntu-latest
 
     steps:
@@ -234,7 +234,9 @@ jobs:
           path: dist/
 
       - name: List artifacts
-        run: find dist/ -type f | sort
+        run: |
+          ls -la dist/
+          find dist/ -type f | sort
 
       - uses: softprops/action-gh-release@v2
         with:
@@ -242,15 +244,15 @@ jobs:
           # this step only uploads the binary assets to it.
           tag_name: ${{ github.ref_name }}
           files: |
-#            dist/**/*.deb
-#            dist/**/*.AppImage
-#            dist/**/*.dmg
-#            dist/**/*.msi
-#            dist/**/*.rpm
-            target/dx/nomnom/bundle/**/bundle/**/*.deb
-            target/dx/nomnom/bundle/**/bundle/**/*.AppImage
-            target/dx/nomnom/bundle/**/bundle/**/*.dmg
-            target/dx/nomnom/bundle/**/bundle/**/*.msi
-            target/dx/nomnom/bundle/**/bundle/**/*.rpm
+            dist/linux-deb/*.deb
+            dist/linux-appimage/*.AppImage
+            dist/linux-rpm/*.rpm
+            dist/macos-dmg/*.dmg
+            dist/windows-msi/*.msi
+        #            dist/**/*.deb
+        #            dist/**/*.AppImage
+        #            dist/**/*.dmg
+        #            dist/**/*.msi
+        #            dist/**/*.rpm
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
