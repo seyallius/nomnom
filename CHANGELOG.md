@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.6](https://github.com/seyallius/nomnom/compare/v0.1.5...v0.1.6) - 2026-04-15
+
+### Fixed
+
+- *(release-asset)* `GLIBC_2.39' not found for linux in v22 + path changes (dry run)
+
 ## [0.1.5](https://github.com/seyallius/nomnom/compare/v0.1.4...v0.1.5) - 2026-04-15
 
 ### Fixed
